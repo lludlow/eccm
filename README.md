@@ -26,6 +26,7 @@ _Thank you for sharing!_
 - Cable details, searchable IDs and printable end labels
 - LACP/static bond documentation and reusable device templates
 - Configurable ports per row and STP root-candidate badges
+- FHD 1U/2U cassette layouts with physical LC labels and empty slots
 
 **_Editor (Dark and Light mode):_**
 
@@ -90,4 +91,5 @@ agent-browser --session eccm-test close
 The browser test replaces profiles in its browser session with synthetic test
 data. Use the isolated test session above, never your everyday browser session.
 It exercises forms, validation, templates, legacy VLAN compatibility, both export
-handlers, profile import and full backup restore.
+handlers, profile import and full backup restore. It also covers cassette slot
+placement, physical labels, front/rear migration and click-to-link behavior.

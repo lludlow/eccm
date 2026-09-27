@@ -236,6 +236,25 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 }
 
 
+
+.cassette-layout{margin-top:12px}
+.cassette-scroll{overflow-x:auto;padding-bottom:8px}
+.cassette-enclosure{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px}
+.cassette-slot{min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
+.cassette-position{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.cassette-slot h4{font-size:13px;margin:6px 0;overflow-wrap:anywhere}
+.cassette-caption{font-size:10px;color:var(--muted);margin-bottom:10px}
+.cassette-slot.empty{border-style:dashed;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:120px}
+.cassette-slot.empty p{font-size:12px}
+.cassette-port-row{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:6px;overflow:visible}
+.cassette-slot .port{padding:3px 2px;height:66px!important;min-width:0}
+.cassette-slot .port .num{font-size:9px;gap:2px;white-space:nowrap;max-width:100%}
+.cassette-slot .port .alias,.cassette-slot .port .peer{font-size:10px}
+.cassette-slot .dual-cell{min-width:0}
+.has-bonds .cassette-slot .port{height:84px!important}
+.cassette-slot-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+[hidden]{display:none!important}
+
 /* Network documentation editors */
 .network-dialog{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,94vw);max-height:90vh;padding:20px;overflow:auto}
 .network-dialog::backdrop{background:#0009}
@@ -447,59 +466,6 @@ html.theme-bright .form-error{color:#b42318}
 
 </div>
 
-<!-- Layout modal -->
-<div class="modal-backdrop" id="layoutModal">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="layoutTitle">
-    <h4 id="layoutTitle">Device layout options</h4>
-    <div class="row"><label style="min-width:110px">Device</label><span id="layoutDeviceName" class="small muted"></span></div>
-    <div class="row">
-      <label style="min-width:110px">Row width</label>
-      <select id="layoutFullRow">
-		  <option value="auto">Auto (follow rules)</option>
-		  <option value="full">Force full row</option>
-		  <option value="half">Force half width</option>
-		</select>
-    </div>
-    <div class="row" id="optMidWrap">
-      <label style="min-width:110px">13–24 ports</label>
-      <select id="layoutMidWrap">
-        <option value="balanced">Balanced (½ + ½)</option>
-        <option value="twelve">12 + remainder</option>
-      </select>
-    </div>
-    <div class="row" id="optSmallWrap">
-      <label style="min-width:110px">≤12 ports</label>
-      <select id="layoutSmallWrap">
-        <option value="single">Single row</option>
-        <option value="split">Split into 2 rows</option>
-      </select>
-    </div>
-    <div class="row" id="optDualLink">
-      <label style="min-width:110px">Dual link</label>
-      <select id="layoutDualLink">
-        <option value="off">Normal</option>
-        <option value="on">Dual link</option>
-      </select>
-    </div>
-	<div class="row" id="optNumbering">
-	  <label style="min-width:110px">Port numbering</label>
-		<select id="layoutNumbering">
-		  <option value="row">Left → Right (rows)</option>
-		  <option value="column">Top ↓ Bottom (columns)</option>
-		  <option value="column-bt">Bottom ↑ Top (columns)</option>
-		</select>
-	</div>
-	<div class="row" id="optPortsPerRow">
-	  <label style="min-width:110px">Ports per row</label>
-	  <input id="layoutPortsPerRow" type="number" min="0" max="128" placeholder="Auto (12)" title="0 or empty = Auto (12 full / 6 half). Use 26 for a 52-port 2-row faceplate." />
-	</div>
-    <div class="actions">
-      <button type="button" id="layoutCancel">Cancel</button>
-      <button type="button" id="layoutSave">Save</button>
-    </div>
-  </div>
-</div>
-
 <!-- Edit Device Modal -->
 <div class="modal-backdrop" id="editDeviceModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editDeviceTitle">
@@ -664,7 +630,7 @@ function cableSummary(link) {
 }
 function endpointLabel(ep) {
   var d=deviceById(ep.deviceId);
-  return (d ? d.name : 'Unknown')+' — '+((d && d.portNames && d.portNames[keyFor(ep.deviceId,ep.port,ep.sub)]) || portLabelDefault(ep.port,ep.sub));
+  return (d ? d.name : 'Unknown')+' — '+portNameFor(d,ep.port,ep.sub);
 }
 function linkDetails(link) {
   return [cableSummary(link),endpointLabel(link.a)+': '+vlanSummary(link.a),endpointLabel(link.b)+': '+vlanSummary(link.b),bondSummary(link.a),bondSummary(link.b)].filter(Boolean).join('\n');
@@ -677,6 +643,7 @@ function hasEndpointData(d) {
 }
 function deviceNetworkSummary(d) {
   var box=el('div',{class:'network-summary'});
+  if(d.cassetteLayout && d.layoutStyle!=='standard' && !cassetteLayoutFor(d))box.appendChild(el('span',{},'Cassette layout needs configuration; showing standard ports.'));
   (d.portGroups || []).forEach(function(g){box.appendChild(el('span',{},g.name+' · '+compactNumbers(g.ports)+' · '+(g.connector || 'Connector unspecified')+' · '+(g.maxSpeed || 'Speed unspecified')));});
   (d.bonds || []).forEach(function(b){box.appendChild(el('span',{},bondMarker({deviceId:d.id,port:b.ports[0]})+' · '+b.name+' · '+(b.mode==='static'?'Static':'LACP')+' · ports '+compactNumbers(b.ports)+(b.ports.length<2?' · Needs another member':'')));});
   return box;
@@ -744,13 +711,14 @@ function vlanFields(parent,config) {
   }};
 }
 function openPortEditor(d, single) {
-  var ui=networkDialog(d.name+' — '+(single ? portLabelDefault(single.port,single.sub) : 'Bulk edit ports'));
+  var ui=networkDialog(d.name+' — '+(single ? portNameFor(d,single.port,single.sub) : 'Bulk edit ports'));
   var ep=single && {deviceId:d.id,port:single.port,sub:single.sub};
   var range,side;
   if (!single) {
     ui.body.appendChild(el('p',{class:'muted'},'Only checked settings change. All selected ports are validated before anything is saved.'));
     range=textField(ui.body,'Ports','', '1-24,49,50'); range.required=true;
-    if (d.dualLink) side=selectField(ui.body,'Side',[['both','Both sides'],['0','Side 1'],['1','Side 2']],'both');
+    if(cassetteLayoutFor(d))ui.body.appendChild(el('p',{class:'small muted'},'Port ranges use enclosure numbering: '+Array.from({length:d.ports/12},function(_,i){return 'C'+(i+1)+' = '+(i*12+1)+'–'+((i+1)*12);}).join('; ')+'.'));
+    if (d.dualLink) side=selectField(ui.body,'Side',[['both','Both sides'],['0',cassetteLayoutFor(d)?'Front':'Side 1'],['1',cassetteLayoutFor(d)?'Rear':'Side 2']],'both');
   }
   var rename;
   if (single && store.settings.enablePortRename) rename=textField(ui.body,'Port name',(d.portNames || {})[keyFor(d.id,ep.port,ep.sub)] || '','Blank restores the default');
@@ -894,7 +862,7 @@ function networkPrintDetails() {
     html+='<h3>'+escapeXml(d.name)+'</h3>'+deviceNetworkSummary(d).outerHTML;
     for (var p=1;p<=d.ports;p++) (d.dualLink?[0,1]:[null]).forEach(function(sub){
       var ep={deviceId:d.id,port:p,sub:sub}, speed=speedFor(d.id,p,sub);
-      if (speed || vlanConfig(ep).mode || bondFor(ep)) html+='<p>'+escapeXml(portLabelDefault(p,sub)+' · '+[speed,vlanSummary(ep),bondSummary(ep)].filter(Boolean).join(' · '))+'</p>';
+      if (speed || vlanConfig(ep).mode || bondFor(ep)) html+='<p>'+escapeXml(portNameFor(d,p,sub)+' · '+[speed,vlanSummary(ep),bondSummary(ep)].filter(Boolean).join(' · '))+'</p>';
     });
   });
   html+='<h2>Cable schedule</h2>';
@@ -918,6 +886,112 @@ function printCableLabels() {
   if (!popup) {alert('Allow popups to open the printable cable labels.');return;}
   popup.document.write(cableLabelsHTML(links)); popup.document.close();
 }
+/* FHD enclosures keep logical port IDs stable while arranging physical cassettes. */
+function validateCassetteLayout(d, layout) {
+  var count=d.ports/12;
+  if (!layout || ![1,2].includes(layout.rows)) throw new Error('Choose a 1U or 2U FHD enclosure.');
+  if (!Number.isInteger(count) || count<1 || count>layout.rows*4) throw new Error('This enclosure needs a multiple of 12 ports, up to '+(layout.rows*48)+'. Change the device port count in Edit.');
+  if (!Array.isArray(layout.slots) || layout.slots.length!==layout.rows*4) throw new Error('The enclosure must contain four slots per row.');
+  var seen=new Set();
+  layout.slots.forEach(function(c){
+    if (c===null) return;
+    if (!Number.isInteger(c) || c<1 || c>count || seen.has(c)) throw new Error('Place each cassette in exactly one slot; use Empty for unused slots.');
+    seen.add(c);
+  });
+  if (seen.size!==count) throw new Error('Every cassette must be assigned to a slot.');
+  return layout;
+}
+function cassetteLayoutFor(d) {
+  if (d && d.layoutStyle==='standard') return null;
+  try {return validateCassetteLayout(d,d.cassetteLayout);} catch (_) {return null;}
+}
+function defaultCassetteLayout(d, rows) {
+  var count=d.ports/12, slots=new Array(rows*4).fill(null);
+  for (var c=1;c<=Math.min(Math.ceil(count),rows*4);c++) {
+    // In 2U, place each successive pair vertically, one destination per column.
+    var slot=rows===2 ? Math.floor((c-1)/2)+(c%2===0?4:0) : c-1;
+    slots[slot]=c;
+  }
+  return {rows:rows,slots:slots,labels:{}};
+}
+function cassetteName(layout, c) {
+  return String((layout.labels || {})[c] || '').trim();
+}
+function cassetteRowPorts(c, top) {
+  var start=(c-1)*12+(top?7:1);
+  return Array.from({length:6},function(_,i){return start+i;});
+}
+function portNameFor(d,p,sub,compact) {
+  var custom=d && d.portNames && d.portNames[keyFor(d.id,p,sub)];
+  if (custom) return custom;
+  if (!d || !cassetteLayoutFor(d)) return portLabelDefault(p,sub);
+  var cassette=Math.floor((p-1)/12)+1, local=(p-1)%12+1;
+  return (compact?'':'C'+cassette+'-')+'LC'+String(local).padStart(2,'0')+
+    (sub==null?'':compact?(sub===0?' F':' R'):(sub===0?' / Front':' / Rear'));
+}
+function renderCassetteEnclosure(d, renderCell) {
+  var layout=cassetteLayoutFor(d);
+  var scroller=el('div',{class:'cassette-scroll',tabindex:'0','aria-label':'FHD enclosure faceplate; scroll horizontally to see all four slots'});
+  var grid=el('div',{class:'cassette-enclosure',dataset:{rows:layout.rows}});
+  layout.slots.forEach(function(c,index){
+    var location=(layout.rows===1?'Row 1':index<4?'Top':'Bottom')+' · slot '+(index%4+1);
+    var slot=el('section',{class:'cassette-slot'+(c===null?' empty':''),dataset:{slot:index+1}});
+    slot.appendChild(el('div',{class:'cassette-position'},location));
+    if (c===null) {
+      slot.append(el('h4',{},'Empty slot'),el('p',{class:'muted'},'Blank panel'));
+    } else {
+      var label=cassetteName(layout,c);
+      slot.dataset.cassette=c;
+      slot.appendChild(el('h4',{},'C'+c+(label?' · '+label:'')));
+      slot.appendChild(el('div',{class:'cassette-caption'},'12 LC duplex · fibers 1–24'));
+      [true,false].forEach(function(top){
+        var row=el('div',{class:'port-row cassette-port-row',dataset:{columns:6}});
+        cassetteRowPorts(c,top).forEach(function(p){row.appendChild(renderCell(d,p));});
+        slot.appendChild(row);
+      });
+    }
+    grid.appendChild(slot);
+  });
+  scroller.appendChild(grid);
+  return el('div',{class:'cassette-layout'},
+    el('p',{class:'small muted'},layout.rows+'U FHD · '+(d.ports/12)+' populated cassettes · 6 duplex connections per row'+(d.dualLink?' · F = front, R = rear (not individual fibers)':'')),scroller);
+}
+function resizedCassetteLayout(d, newCount) {
+  var layout=deepClone(d.cassetteLayout), count=newCount/12;
+  if (!Number.isInteger(count) || count<1 || count>layout.rows*4) throw new Error('FHD enclosures require a multiple of 12 ports, up to '+(layout.rows*48)+'.');
+  layout.slots=layout.slots.map(function(c){return c!==null && c<=count?c:null;});
+  for(var c=1;c<=count;c++) if(!layout.slots.includes(c)) layout.slots[layout.slots.indexOf(null)]=c;
+  Object.keys(layout.labels || {}).forEach(function(k){if(Number(k)>count)delete layout.labels[k];});
+  return validateCassetteLayout({ports:newCount},layout);
+}
+function planDualLinkMigration(d, enabled) {
+  if (!!d.dualLink===enabled) return function(){};
+  if (!enabled) {
+    if (hasEndpointData(d)) throw new Error('Remove this device’s connections and port settings before turning off dual-link mode.');
+    return function(){d.dualLink=false;};
+  }
+  if ((d.bonds || []).length) throw new Error('Remove the device’s bonds before enabling dual-link mode.');
+  var maps=['portAliases','reservedPorts','portSpeeds','portVlans','portLinkedToNames','portVlanConfigs'].map(function(field){return state[field] || {};});
+  maps.push(d.portNames || {});
+  var moves=[];
+  maps.forEach(function(map){Object.keys(map).forEach(function(k){
+    var parts=k.split(':');
+    if (parts[0]!==d.id) return;
+    if (parts.length!==3 || parts[2]!=='') throw new Error('This device already has side-specific settings. Resolve them before enabling dual-link mode.');
+    moves.push({map:map,from:k,to:k+'0'});
+  });});
+  var endpoints=[];
+  state.links.forEach(function(l){[l.a,l.b].forEach(function(ep){
+    if (ep.deviceId!==d.id) return;
+    if (ep.sub!=null) throw new Error('This device already has side-specific links. Resolve them before enabling dual-link mode.');
+    endpoints.push(ep);
+  });});
+  return function(){
+    moves.forEach(function(m){m.map[m.to]=m.map[m.from];delete m.map[m.from];});
+    endpoints.forEach(function(ep){ep.sub=0;}); d.dualLink=true;
+  };
+}
+
 /* ===================== END NETWORK DOCUMENTATION ===================== */
 
 /* ===================== HIGHLIGHT TUNING ===================== */
@@ -1180,7 +1254,7 @@ function connectPorts(a, b) {
 
   // Create link
   var id = uid();
-  state.links.push({ id:id, a:a, b:b });
+  state.links.push({ id:id, a:a, b:b, cable:normalizeCable() });
 
   // --- AUTO-NEGOTIATE SPEED ---
   var devA = deviceById(a.deviceId);
@@ -1541,6 +1615,7 @@ function renderDevices(){
 
 
 function getDeviceWidthClass(d){
+  if (cassetteLayoutFor(d)) return 'full';
 
   // NEW PRIORITY OVERRIDE FROM UI
   if (d.widthMode === 'full') return 'full';
@@ -1613,6 +1688,7 @@ function renderDeviceWrap(d, fullWidth){
     )
   );
 
+  var enclosureLayout=cassetteLayoutFor(d);
   var meta = el('div',{class:'meta'},
     document.createTextNode((d.ports||1)+' ports'),
     (function(){
@@ -1620,6 +1696,7 @@ function renderDeviceWrap(d, fullWidth){
         el('button',{class:'mini', title:'Remove one port', onclick:function(e){ e.stopPropagation(); if ((d.ports||1) <= 1) return; var newCount = (d.ports||1)-1; var affected = linksOnPortsBeingRemoved(d, newCount); if (affected.length > 0 && !confirm('Warning: The port(s) that will be removed have linked connections (' + affected.length + '). Removing the port will also remove these connections. Are you sure you want to continue?')) return; changePorts(d, newCount); saveStore(); render(); }}, '– ' + getPortTerm()),
 		el('button',{class:'mini', title:'Add one port', onclick:function(e){ e.stopPropagation(); changePorts(d, (d.ports||1)+1); saveStore(); render(); }}, '+ ' + getPortTerm())      
       );
+      if(enclosureLayout)c.hidden=true;
       return c;
     })()
   );
@@ -1706,11 +1783,9 @@ if (hasVlan){
   rightInd.classList.add('ind--off');
 }
 
-var portLabel =
-  (d.portNames && d.portNames[keyFor(d.id, p, sub)]) ||
-  portLabelDefault(p, sub);
+var portLabel = portNameFor(d,p,sub,true);
 
-var numEl = el('div',{class:'num'},
+var numEl = el('div',{class:'num',title:portNameFor(d,p,sub)},
   leftInd,
   el('span',{class:'num-label'}, portLabel),
   rightInd
@@ -1765,8 +1840,7 @@ var defaultPeerText =
         peer && peerDev
           ? (function(){
               var portName =
-                (peerDev.portNames && peerDev.portNames[keyFor(peer.deviceId, peerPort, peer.sub)]) ||
-                portLabelDefault(peerPort, peer.sub);
+                portNameFor(peerDev,peerPort,peer.sub);
 
               var peerAlias = aliasFor(peer.deviceId, peerPort, peer.sub);
 
@@ -1829,8 +1903,7 @@ var peerEl = el(
     if (ev.ctrlKey){
       var k = keyFor(d.id,p,sub);
       if (state.reservedPorts && state.reservedPorts[k]){
-		var term = getPortTerm();
-        if(confirm('Clear reserved status for ' + term + ' ' +p+(sub!=null?('/'+(sub+1)):'')+'?')){
+        if(confirm('Clear reserved status for ' + portNameFor(d,p,sub)+'?')){
           delete state.reservedPorts[k];
         }
       } else {
@@ -1871,10 +1944,8 @@ var peerEl = el(
       pendingPort = null; clearSelectionOutlines(); highlightLink(null); return;
     }
 
-    var devA = deviceById(pendingPort.deviceId);
-    var devB = deviceById(d.id);
-    var msg = 'Create link:\n' + (devA?devA.name:'A') + getPortTerm() + pendingPort.port + (pendingPort.sub!=null?'/'+(pendingPort.sub+1):'')
-              + ' ⇄ ' + (devB?devB.name:'B') + ' Port ' + p + (sub!=null?'/'+(sub+1):'');
+    var msg = 'Create link:\n' + endpointLabel(pendingPort)
+              + ' ⇄ ' + endpointLabel({deviceId:d.id,port:p,sub:sub});
     if (!confirm(msg)){ pendingPort = null; clearSelectionOutlines(); return; }
     var ok = connectPorts(pendingPort, {deviceId:d.id, port:p, sub:sub});
     pendingPort = null;
@@ -1899,15 +1970,14 @@ var peerEl = el(
       var livePeer = getPeer(d.id, p, sub);
       var livePeerDev = livePeer ? deviceById(livePeer.deviceId) : null;
       if (livePeer && livePeerDev) {
-        peerTxt = livePeerDev.name + ' • Port ' + livePeer.port +
-                  (livePeer.sub != null ? '/' + (livePeer.sub + 1) : '');
+        peerTxt = endpointLabel(livePeer);
       }
     }
 
     var ep = {deviceId:d.id, port:p, sub:sub};
     var cap = portCapability(d, p);
     return '<div class="hc-title">' + escapeXml(d.name || 'Device') + '</div>' +
-      [['Port',p + (sub != null ? '/' + (sub + 1) : '')], ['Alias',liveAlias],
+      [['Port',portNameFor(d,p,sub)], ['Alias',liveAlias],
        ['Peer',peerTxt], ['Status',status], ['Recorded speed',liveSpeed],
        ['Capability',[cap.name,cap.connector,cap.maxSpeed].filter(Boolean).join(' · ') || 'Unspecified'],
        ['VLAN',vlanSummary(ep)], ['Bond',bondSummary(ep) || 'None'],
@@ -1927,7 +1997,7 @@ var peerEl = el(
   node.addEventListener('mouseleave', function () { hcHide(); });
 
   node.tabIndex = 0; node.setAttribute('role','button');
-  node.setAttribute('aria-label', d.name + ' ' + portLabelDefault(p,sub) + (bondSummary({deviceId:d.id,port:p,sub:sub}) ? '. ' + bondMarker({deviceId:d.id,port:p,sub:sub}) + ' ' + bondSummary({deviceId:d.id,port:p,sub:sub}) : '') + '. Enter to select; Shift+F10 to edit.');
+  node.setAttribute('aria-label', d.name + ' ' + portNameFor(d,p,sub) + (bondSummary({deviceId:d.id,port:p,sub:sub}) ? '. ' + bondMarker({deviceId:d.id,port:p,sub:sub}) + ' ' + bondSummary({deviceId:d.id,port:p,sub:sub}) : '') + '. Enter to select; Shift+F10 to edit.');
   node.addEventListener('keydown',function(ev){
     if (ev.key==='Enter' || ev.key===' ') {ev.preventDefault(); node.click();}
     if (ev.key==='F10' && ev.shiftKey) openSpeedMenu(ev,d.id,p,sub);
@@ -1961,6 +2031,9 @@ var peerEl = el(
     return wrapCell;
   }
 
+  if(enclosureLayout){
+    portsContainer=renderCassetteEnclosure(d,renderPortCell);
+  } else {
 	var colsPerRow = getPortsPerRow(d, fullWidth);
 	rows.forEach(function(count, rIndex){
 	  var row = el('div',{class:'port-row'});
@@ -1978,6 +2051,7 @@ var peerEl = el(
 	  portsContainer.appendChild(row);
 	});
 
+  }
   var card = el('div',{
   class:'device'+((d.bonds || []).length?' has-bonds':''),
   id:'dev-'+d.id,
@@ -2001,6 +2075,7 @@ function linksOnPortsBeingRemoved(d, newCount){
 function changePorts(d, newCount){
   newCount = Math.max(1, Math.min(9999, Number(newCount)||1));
   if (newCount === d.ports) return;
+  var newCassetteLayout=d.cassetteLayout && d.layoutStyle!=='standard' ? resizedCassetteLayout(d,newCount) : null;
   if (newCount < d.ports){
     state.links = state.links.filter(function(L){
       var aOk = !(L.a.deviceId===d.id && L.a.port>newCount);
@@ -2015,6 +2090,7 @@ function changePorts(d, newCount){
     });
   }
   d.ports = newCount;
+  if(newCassetteLayout)d.cassetteLayout=newCassetteLayout;
   normalizeNetworkMetadata(state);
 }
 
@@ -2037,12 +2113,10 @@ function renderConnections() {
 
     // Use per-port custom name if present, otherwise fall back to the GLOBAL term ("Port/Interface/Custom")
     var aPortLabel =
-      (da && da.portNames && da.portNames[keyFor(L.a.deviceId, L.a.port, L.a.sub)]) ||
-      portLabelDefault(L.a.port, L.a.sub);
+      portNameFor(da,L.a.port,L.a.sub);
 
     var bPortLabel =
-      (db && db.portNames && db.portNames[keyFor(L.b.deviceId, L.b.port, L.b.sub)]) ||
-      portLabelDefault(L.b.port, L.b.sub);
+      portNameFor(db,L.b.port,L.b.sub);
 
     var parts = [
       aName,
@@ -2151,8 +2225,7 @@ function renderConnections() {
       var alias  = aliasFor(devId, port, sub);
 
       var reservedPortLabel =
-        (d && d.portNames && d.portNames[keyFor(devId, port, sub)]) ||
-        portLabelDefault(port, sub);
+        portNameFor(d,port,sub);
 
       var textParts = [
         (d && d.name) || 'Unknown',
@@ -2335,6 +2408,7 @@ function openPrintSheet(includeTable){
   /* --------------------------------------------------------------------------- */
   + '.port{border:1px solid #333;border-radius:8px;padding:6px 3px 4px;text-align:center;grid-column:auto!important;width:auto!important}\n'
   + '.has-bonds .port{height:calc(var(--prtPortH) + 18px)!important}.port{position:relative}.port-bond-badge{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);padding:0 2px;font-size:9px;line-height:14px;font-weight:700;border:1px solid #7395bc;border-radius:4px;background:#e3efff;color:#153858}.connection-bond-badge{display:inline-block;margin-top:3px;padding:2px 4px;border:1px solid #7395bc;border-radius:4px;font-size:10px;white-space:normal}.connection-port .muted{color:#555;font-size:10px}\n'
+  + '.cassette-enclosure{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.cassette-slot{border:1px solid #bbb;padding:5px;min-width:0;break-inside:avoid}.cassette-slot.empty{border-style:dashed;text-align:center;display:flex;flex-direction:column;justify-content:center}.cassette-slot h4{font-size:11px;margin:5px 0}.cassette-position,.cassette-caption,.cassette-layout>p{font-size:9px;color:#555}.cassette-port-row{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin-top:5px}.cassette-slot .port{height:66px!important;padding:3px 1px}.cassette-slot .dual-cell{height:132px!important;min-width:0}.cassette-slot .num{font-size:8px!important}.cassette-slot .alias,.cassette-slot .peer{font-size:8px!important;overflow:hidden}.cassette-slot .num-label{overflow-wrap:anywhere}\n'
   + '.port .num{font-size:12px;font-weight:600}\n'
   + '.port .alias{font-size:11px;margin-top:2px;min-height:1.1em}\n'
   + '.port .peer{font-size:12px;font-weight:700;margin-top:4px;min-height:1.2em}\n'
@@ -2378,7 +2452,7 @@ function openPrintSheet(includeTable){
   + '      var cols = Number(row.dataset.columns) || (isFull ? 12 : 6);'
   + '      var gap    = isFull ? GAP_FULL : GAP_HALF;'
   + '      row.style.gridTemplateColumns = "repeat(" + cols + ", minmax(0,1fr))";'
-  + '      if (cols > 12) gap = 3;'
+  + '      if (cols > 12 || row.closest(".cassette-slot")) gap = 3;'
   + '      row.style.gap = gap + "px";'
   + '    }'
   + '  }'
@@ -2428,6 +2502,7 @@ function sanitizeId(id) {
 /* --- Build link label (ports + speed + VLAN) --- */
 function buildLinkLabel(L) {
   function portLabel(ep) {
+    if (cassetteLayoutFor(deviceById(ep.deviceId))) return portNameFor(deviceById(ep.deviceId),ep.port,ep.sub);
     let base = ep.port;
     if (ep.sub != null) base += "/" + (ep.sub + 1);
     return base;
@@ -2458,9 +2533,8 @@ function getReservedPortsForDevice(deviceId) {
     if (devId !== deviceId) return;
 
     const label = state.reservedPorts[k] || "Reserved";
-    const subText = sub ? "/" + (Number(sub) + 1) : "";
-
-    out.push(`Port ${port}${subText} - ${label}`);
+    const name = portNameFor(deviceById(deviceId),Number(port),sub===''?null:Number(sub));
+    out.push(`${name} - ${label}`);
   });
 
   return out;
@@ -2482,6 +2556,11 @@ function buildDeviceLabel(d) {
   // 1. escape each line individually
   (d.portGroups || []).forEach(g => lines.push(g.name + ': ports ' + compactNumbers(g.ports) + ' / ' + (g.connector || 'unspecified') + ' / ' + (g.maxSpeed || 'unspecified')));
   (d.bonds || []).forEach(b => lines.push(b.name + ' (' + b.mode + '): ' + compactNumbers(b.ports)));
+  const enclosure = cassetteLayoutFor(d);
+  if (enclosure) {
+    lines.push(enclosure.rows+'U FHD enclosure');
+    enclosure.slots.forEach((c,i) => lines.push('Slot '+(i+1)+': '+(c===null?'Empty':'C'+c+' '+cassetteName(enclosure,c))));
+  }
   const priority = parseStpPriority(d);
   if (priority != null) lines.push('STP ' + priority + (priority === lowestStpPriority() ? ' · Root candidate' : ''));
   const safeLines = lines.map(l => escapeXml(l));
@@ -2845,7 +2924,7 @@ const customHTML = `
     state.devices.push({
       id:uid(),name,ports,color:chosenColor,
       forceFullRow:false,midWrapMode:'balanced',smallWrap:false,dualLink:false,
-      numbering:'row',
+      numbering:'row',widthMode:'auto',portNames:{},maxSpeed:null,portGroups:[],bonds:[],
       portsPerRow:0,
       stpPriority:null
     });
@@ -2860,77 +2939,63 @@ const customHTML = `
 
 /* ===================== LAYOUT MODAL ===================== */
 function openLayoutModal(deviceId){
-  var d = deviceById(deviceId); if (!d) return;
-  var backdrop = $('#layoutModal');
-  var nameEl = $('#layoutDeviceName');
-  var selFull = $('#layoutFullRow');
-  var selMid = $('#layoutMidWrap');
-  var selSmall = $('#layoutSmallWrap');
-  var selDual = $('#layoutDualLink');
-  var rowMid = $('#optMidWrap');
-  var rowSmall = $('#optSmallWrap');
-  var selNumbering = $('#layoutNumbering');
-  var inpPerRow = $('#layoutPortsPerRow');
-
-
-  nameEl.textContent = d.name + ' ('+d.ports+' ports)';
-  inpPerRow.value = (d.portsPerRow > 0) ? d.portsPerRow : '';
-  selFull.value = (d.widthMode === 'full') ? 'full'
-              : (d.widthMode === 'half') ? 'half'
-              : 'auto';
-  selMid.value = (d.midWrapMode === 'twelve') ? 'twelve' : 'balanced';
-  selSmall.value = d.smallWrap ? 'split' : 'single';
-  selDual.value = d.dualLink ? 'on' : 'off';
-  selNumbering.value = (d.numbering === 'column' || d.numbering === 'column-bt') ? d.numbering : 'row';
-
-  rowMid.style.display   = (d.ports>=13 && d.ports<=24) ? 'flex' : 'none';
-  rowSmall.style.display = (d.ports>=7  && d.ports<=12) ? 'flex' : 'none';
-
-  $('#layoutCancel').onclick = function(){ backdrop.style.display='none'; };
-  $('#layoutSave').onclick = function(){
-    if (d.dualLink !== (selDual.value === 'on') && hasEndpointData(d)) {
-      alert('Remove this device’s connections, port settings and bonds before changing dual-link mode.'); return;
-    }
-
-		if (selFull.value === 'full') {
-		  d.widthMode = 'full';
-		  d.forceFullRow = true;
-		} else if (selFull.value === 'half') {
-		  d.widthMode = 'half';
-		  d.forceFullRow = false;
-		} else {
-		  d.widthMode = 'auto';
-		  d.forceFullRow = false;
-		}
-    if (d.ports>=13 && d.ports<=24) d.midWrapMode = (selMid.value === 'twelve') ? 'twelve' : 'balanced';
-    if (d.ports>=7  && d.ports<=12) d.smallWrap   = (selSmall.value === 'split');
-    d.dualLink = (selDual.value === 'on');
-	d.numbering = (selNumbering.value === 'column' || selNumbering.value === 'column-bt') ? selNumbering.value : 'row';
-    var perRowVal = parseInt(inpPerRow.value, 10);
-    d.portsPerRow = (perRowVal > 0) ? Math.min(128, perRowVal) : 0;
-    saveStore(); backdrop.style.display='none'; render();
+  var d=deviceById(deviceId);if(!d)return;
+  var ui=networkDialog(d.name+' — Layout');
+  var kind=selectField(ui.body,'Layout style',[['standard','Standard port grid'],['fhd','FHD cassette enclosure']],d.cassetteLayout && d.layoutStyle!=='standard'?'fhd':'standard');
+  kind.id='layoutStyle';
+  kind.previousElementSibling.htmlFor=kind.id;
+  var dual=selectField(ui.body,'Port sides',[['off','Single connection'],['on','Dual link — front and rear']],d.dualLink?'on':'off');
+  ui.body.appendChild(el('p',{class:'small muted'},'Enabling dual link moves existing connections and port settings to Front. Rear starts free.'));
+  var standard=el('fieldset',{},el('legend',{},'Standard grid'));ui.body.appendChild(standard);
+  var width=selectField(standard,'Device width',[['auto','Auto'],['full','Full row'],['half','Half width'],['quarter','Quarter width']],d.widthMode || 'auto');
+  var numbering=selectField(standard,'Port numbering',[['row','Left → Right (rows)'],['column','Top ↓ Bottom (columns)'],['column-bt','Bottom ↑ Top (columns)']],d.numbering || 'row');
+  var perRow=field(standard,'Ports per row',el('input',{type:'number',min:0,max:128,step:1,value:d.portsPerRow || 0,title:'0 = automatic (12 full / 6 half)' }));
+  var mid=selectField(standard,'13–24 port distribution',[['balanced','Balanced'],['twelve','12 + remainder']],d.midWrapMode || 'balanced');
+  mid.parentElement.hidden=d.ports<13 || d.ports>24;
+  var small=selectField(standard,'Small device rows',[['single','Single row'],['split','Split into two rows']],d.smallWrap?'split':'single');
+  small.parentElement.hidden=d.ports>12;
+  var enclosure=el('fieldset',{},el('legend',{},'FHD enclosure'));ui.body.appendChild(enclosure);
+  var initial=d.cassetteLayout || defaultCassetteLayout(d,d.ports>48?2:1);
+  var draft=deepClone(initial);
+  var size=selectField(enclosure,'Enclosure size',[['1','1U — four slots'],['2','2U — eight slots']],String(initial.rows));
+  enclosure.appendChild(el('p',{class:'small muted'},'Each cassette uses a block of 12 existing ports. Its upper row displays LC07–LC12; its lower row displays LC01–LC06. Moving cassettes changes placement only.'));
+  var slotHost=el('div',{class:'cassette-slot-editor'}), namesHost=el('div',{}), slotInputs=[], nameInputs=[];
+  enclosure.append(slotHost,namesHost);
+  function capture(){
+    if(slotInputs.length) draft.slots=slotInputs.map(function(s){return s.value===''?null:Number(s.value);});
+    draft.labels=draft.labels || {};
+    nameInputs.forEach(function(input,i){draft.labels[i+1]=input.value.trim();});
+  }
+  function populate(){
+    slotHost.replaceChildren();namesHost.replaceChildren();slotInputs=[];nameInputs=[];
+    var count=Math.ceil(d.ports/12), choices=[['','Empty slot']];
+    for(var c=1;c<=Math.min(count,8);c++)choices.push([String(c),'C'+c+' · ports '+((c-1)*12+1)+'–'+(c*12)]);
+    for(var i=0;i<draft.rows*4;i++) slotInputs.push(selectField(slotHost,(draft.rows===1?'Row 1':i<4?'Top':'Bottom')+' slot '+(i%4+1),choices,draft.slots[i]==null?'':String(draft.slots[i])));
+    namesHost.appendChild(el('p',{class:'small muted'},'Optional cassette labels, such as “To Rack11”.'));
+    for(var c=1;c<=Math.min(count,8);c++) nameInputs.push(textField(namesHost,'C'+c+' label',cassetteName(draft,c),'Destination or purpose'));
+  }
+  size.onchange=function(){
+    capture();var labels=draft.labels;
+    draft=defaultCassetteLayout(d,Number(size.value));draft.labels=labels;populate();
   };
-  /* --- allow Escape key & outside click to close Layout modal --- */
-(function wireLayoutModalClose() {
-  const modal = document.getElementById('layoutModal');
-  if (!modal) return;
-
-  // Close on Escape
-  document.addEventListener('keydown', function (e) {
-    if (modal.style.display === 'flex' && e.key === 'Escape') {
-      modal.style.display = 'none';
+  function update(){
+    var fhd=kind.value==='fhd';standard.hidden=fhd;standard.disabled=fhd;enclosure.hidden=!fhd;enclosure.disabled=!fhd;
+  }
+  kind.onchange=update;populate();update();
+  ui.save(function(){
+    var next=null;
+    if(kind.value==='fhd'){capture();next=validateCassetteLayout(d,draft);}
+    var migrate=planDualLinkMigration(d,dual.value==='on');
+    // Validation completes before either endpoint migration or layout changes.
+    migrate();
+    if(next)d.cassetteLayout=deepClone(next);
+    d.layoutStyle=kind.value;
+    if(kind.value==='standard'){
+      d.widthMode=width.value;d.forceFullRow=width.value==='full';d.numbering=numbering.value;
+      d.portsPerRow=Number(perRow.value);d.midWrapMode=mid.value;d.smallWrap=small.value==='split';
     }
+    pendingPort=null;highlightedLinkId=null;
   });
-
-  // Close when clicking backdrop (outside the inner .modal)
-  modal.addEventListener('click', function (e) {
-    if (e.target === modal) {
-      modal.style.display = 'none';
-    }
-  });
-})();
-
-  backdrop.style.display = 'flex';
 }
 
 /* ===================== EDIT DEVICE MODAL ===================== */
@@ -3031,6 +3096,10 @@ document.getElementById('editDevSave').addEventListener('click', function() {
   if (!currentEditDevice) return;
   const name = document.getElementById('editDevName').value.trim();
   const ports = Math.max(1, Math.min(9999, Number(document.getElementById('editDevPorts').value) || 1));
+  if(currentEditDevice.cassetteLayout && currentEditDevice.layoutStyle!=='standard'){
+    try{resizedCassetteLayout(currentEditDevice,ports);}
+    catch(err){alert(err.message);return;}
+  }
   currentEditDevice.name = name || currentEditDevice.name;
   if (ports < (currentEditDevice.ports || 1)) {
     var affected = linksOnPortsBeingRemoved(currentEditDevice, ports);
@@ -3729,8 +3798,7 @@ updateUniformPortWidth();
 (function modalEscapeManager() {
   const modals = {
     palette: document.getElementById('paletteModal'),
-    edit: document.getElementById('editDeviceModal'),
-    layout: document.getElementById('layoutModal')
+    edit: document.getElementById('editDeviceModal')
   };
 
   function isOpen(el) {
@@ -3745,10 +3813,6 @@ updateUniformPortWidth();
     if (isOpen(modals.edit)) {
       modals.edit.style.display = 'none';
       currentEditDevice = null;
-      return true;
-    }
-    if (isOpen(modals.layout)) {
-      modals.layout.style.display = 'none';
       return true;
     }
     return false;

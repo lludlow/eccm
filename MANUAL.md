@@ -38,13 +38,46 @@ Each device is shown as a card with its own ports. Using clear names and distinc
 
 <img align="right" width="250" alt="image" src="https://github.com/user-attachments/assets/af86ca1e-664e-4270-94d4-cccc04ef0ddb" />
 
-Configuring the layout makes your map easier to follow, whether you prefer full-width rows, split views, or dual-link ports. These options don’t affect the connections themselves — only how the device is displayed for clarity.  
+Click **Layout** on a device to choose a **Standard port grid** or **FHD cassette enclosure**.
 
-Click **Layout** on a device to adjust how its ports display:
-- **Row width**: full-width (12 ports per row) or half-width (6 ports per row)  
-- **13–24 ports**: choose *balanced* (split evenly) or *12 + remainder*  
-- **≤12 ports**: choose single row or split into 2 rows  
-- **Dual link**: each port can be split into 2 sub-ports  
+For a standard grid, choose device width, ports per row (0 means automatic),
+row/column numbering, and whether small devices split into two rows.
+
+**Port sides** enables dual-link documentation. Existing connections, aliases,
+custom names, reservations, speeds and VLAN settings move to Front (side 1);
+Rear (side 2) starts free. Devices with bonds or conflicting side-specific data
+must be resolved first. Turning dual link off requires clearing endpoint data.
+
+### FHD fiber enclosures
+
+Create the device with its populated **LC duplex connection count**, then select
+**Layout → FHD cassette enclosure**:
+
+- **1U**: four cassette slots in one row; up to 48 LC duplex connections.
+- **2U**: eight slots in two rows of four; up to 96 LC duplex connections.
+- Each supported cassette contains 12 duplex connections (24 fibers), arranged
+  as **LC07–LC12 above LC01–LC06**. The LC numbers identify duplex pairs;
+  the cassette's printed fiber numbers run 1–24.
+- Assign each cassette to a slot and optionally label it by destination.
+  Unused slots display blank panels. Moving a cassette preserves its connections.
+- Names such as **C2-LC01 / Front** identify the cassette, duplex connection and
+  side in the connection table, prompts, cable labels and exports.
+
+For the Rack10 installation, use **72 ports, 2U, dual link**. The default slot
+arrangement pairs C1/C2 vertically for Rack11, C3/C4 for Rack12, and C5/C6 for
+Rack13; the rightmost column stays empty. Each remote rack uses **24 ports, 1U,
+dual link**, with two populated cassettes and two empty slots.
+
+Connect equipment to Front and document the inter-rack circuits on Rear.
+Rear represents the circuit through the MTP trunk, not a separate physical LC
+socket or a Tx/Rx fiber. ECCM does not model MTP pin assignments or polarity.
+
+Bulk-edit ranges retain enclosure numbering: C1 is ports 1–12, C2 is 13–24,
+and so on. Change the populated port count through **Edit**, in multiples of 12.
+Reducing it removes the highest-numbered cassettes and their affected links,
+with the existing linked-port confirmation. Templates and JSON exports preserve
+slot placement and cassette labels. Switching temporarily to the standard grid
+also preserves the saved cassette layout.
 
 ---
 

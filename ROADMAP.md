@@ -29,6 +29,7 @@ If something here matters to you, please open/👍 an issue so I can prioritise.
 - [x] Cable details, search and printable end labels
 - [x] LACP/static bond groups
 - [x] Profile-scoped device templates
+- [x] FHD 1U/2U enclosures with cassette slots and LC duplex numbering
 - [x] Export/import, backup, print and draw.io metadata coverage
 
 ## 🧰 In progress / Next up (P0 = highest)
