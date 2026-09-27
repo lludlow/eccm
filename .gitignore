@@ -1,0 +1,10 @@
+# Local network inventories and exports
+*.json
+
+# Local development copies; ECCM.html is the application
+ECCM-patched*.html
+ECCM-1.0.7.html
+
+# Generated diagrams and browser test artifacts
+*.drawio
+.DS_Store

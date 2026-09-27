@@ -114,3 +114,87 @@ From the *Connections* table:
 - Labels + reserved ports are powerful for documenting external links  
 
 ---
+
+## Port groups and capabilities
+
+Choose **Configure ports → Port groups** on a device. Give each group a name,
+member ports (for example `1-48` or `49-52`), connector and maximum speed. Groups
+on the same device cannot overlap. Ungrouped ports use the device maximum speed;
+a group with an unspecified speed has an unknown maximum. The faceplate shows a
+summary of every group and marks each group's first port.
+
+Capabilities describe the hardware. Changing them does not overwrite recorded
+port speeds. New links can receive an estimated speed from endpoint capabilities;
+ECCM does not query devices or measure negotiated speed.
+
+## Access and trunk VLANs
+
+Right-click a port to edit it. Keyboard users can focus a port and press
+**Shift+F10** to edit, or **Enter** to select/link it.
+
+- **Access:** one VLAN ID, from 1 to 4094.
+- **Trunk:** an optional native/untagged VLAN and allowed tagged VLANs, such as
+  `20,30,100-110`. A blank tagged list means none, not all. The native VLAN cannot
+  also be in the tagged list.
+- **Unspecified:** clears the recorded VLAN configuration.
+
+Older single-VLAN profiles appear as access ports. Both endpoints retain their
+own configuration. Summaries appear in port hovers, the connection table,
+printing and draw.io exports.
+
+## Bulk editing
+
+Choose **Configure ports → Edit ports in bulk**. Enter numbers or ranges such as
+`1-24,49,50`, then check each setting you want to apply: alias, recorded speed or
+VLAN configuration. Unchecked settings stay unchanged. Applying a blank value
+clears that setting. On dual-link devices, select side 1, side 2 or both.
+
+ECCM validates the entire edit before saving. A recorded speed cannot exceed a
+known port-group or device maximum. Invalid ranges or VLANs leave all selected
+ports unchanged.
+
+## LAG / bond groups
+
+Choose **Configure ports → LAG / bond groups**. Specify a name, LACP or static
+mode, and at least two member ports. Each port can belong to only one bond on its
+device. Configure the peer's bond separately. Bonds are documentation only and
+are unavailable on dual-link patch panels.
+
+Removing a port also removes its membership. A bond left with only one member
+shows **Needs another member**, so incomplete documentation remains visible.
+
+## Cable details and labels
+
+In **Connections**, select **Cable details** (or an existing cable ID). Record a
+unique cable ID, medium, length in metres, color and notes. These details belong
+to the connection and are shared by both ends. Unlinking removes the connection
+and its cable details.
+
+Search accepts cable details, VLAN summaries and bond names. **Cable labels** in
+the header opens a printable sheet with two labels per named cable, one for each
+end, across the current profile. Each label includes its local and remote port.
+The print layout also includes a port configuration list and cable schedule.
+
+## Device templates
+
+Choose **Configure ports → Save as device template**. Templates preserve layout,
+color, port groups, speeds and VLAN configuration. They exclude connections,
+cable IDs, aliases, reservations, custom port names, STP priority and bonds.
+
+In **Add device**, select a template, enter a new device name, and choose **Add
+device**. Templates belong to the active profile and travel with profile exports
+and full backups. Deleting a template leaves devices made from it unchanged.
+
+## STP priority
+
+Set bridge priority in **Edit**. The lowest recorded priority in the current
+profile is marked **Root candidate**, including ties. This is a planning hint,
+not evidence of the operational root; ECCM does not discover STP domains,
+instances, bridge IDs or forwarding state.
+
+## Saving and compatibility
+
+Continue to use **Export** for one profile and **Backup all** for every profile.
+Both include port groups, VLAN configurations, bonds, cables and templates. Old
+profiles remain importable. Older ECCM versions may discard the new metadata,
+so keep a current backup before opening a profile in an older version.

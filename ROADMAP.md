@@ -21,10 +21,20 @@ If something here matters to you, please open/👍 an issue so I can prioritise.
 
 ---
 
+## Fork additions
+
+- [x] Configurable ports per row and STP root-candidate badges
+- [x] Port groups with connector and speed capabilities
+- [x] Access/trunk VLAN configuration and bulk editing
+- [x] Cable details, search and printable end labels
+- [x] LACP/static bond groups
+- [x] Profile-scoped device templates
+- [x] Export/import, backup, print and draw.io metadata coverage
+
 ## 🧰 In progress / Next up (P0 = highest)
 - **P0**
-  - [ ] Port settings - additional values such as port speed and VLAN configurable via a right-click menu
-  - [ ] Hover card - select port + hover, reveal a pop-up window including all the information about the port, including the additional settings (see above)
+  - [x] Port settings: speed, access/trunk VLANs and bulk editing
+  - [x] Hover card: port capabilities, VLANs, bonds and cable details
 - **P1**
   - [ ] “Quick Start” 5-step section at top of manual
 - **P1**

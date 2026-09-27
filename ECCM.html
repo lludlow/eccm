@@ -46,6 +46,9 @@ button:hover{border-color:#2a2f3b}
 .device-actions{display:flex;gap:6px;flex-wrap:wrap}
 .meta{font-size:12px;color:var(--muted);margin-top:2px}
 .meta .inline-controls{margin-left:8px;display:inline-flex;gap:6px}
+.stp-badge{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);font-size:11px;font-weight:650;letter-spacing:.02em;color:var(--muted);white-space:nowrap}
+.stp-badge.root{border-color:#c9a227;color:#e6c35c;background:rgba(201,162,39,.12)}
+html.theme-bright .stp-badge.root{border-color:#b8860b;color:#8a6500;background:rgba(184,134,11,.12)}
 .ports-rows{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .port-row{display:grid;gap:var(--portGapHalf)}
 .port{height: var(--prtPortH) !important;position:relative;border:1px solid var(--line);background:#0f141d;border-radius:10px;padding:4px 6px 6px;cursor:pointer;text-align:center;user-select:none;transition:background .12s}
@@ -111,6 +114,7 @@ html.theme-bright .port .ind{ opacity:.8; }
 .modal label{margin:0;color:var(--ink);font-size:13px}
 .modal select{background:#0f131b;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+html.theme-bright{--line:#ccc;--ink:#111;--panel:#fff;--bg:#fff}
 html.theme-bright body,html.theme-bright .card,html.theme-bright aside,html.theme-bright main,html.theme-bright #settingsPanel{background:#fff!important;color:#111!important;border-color:#ccc!important;--muted: #222; --paper: #fff}
 html.theme-bright header{background:#fff!important;border-bottom:1px solid #e5e7eb!important;color:#111!important}
 html.theme-bright header h1{color:#111!important}
@@ -231,6 +235,36 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
   100% { transform: translateX(0); }
 }
 
+
+/* Network documentation editors */
+.network-dialog{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,94vw);max-height:90vh;padding:20px;overflow:auto}
+.network-dialog::backdrop{background:#0009}
+.network-dialog form{display:flex;flex-direction:column;max-height:calc(90vh - 42px)}
+.network-dialog-body{overflow-y:auto;padding-right:6px}
+.network-dialog h2{flex-shrink:0;font-size:19px;margin:0 0 14px}
+.network-dialog p{line-height:1.5}
+.network-dialog fieldset{min-width:0;border:1px solid var(--line);border-radius:8px;margin:16px 0;padding:12px}
+.network-dialog legend{font-size:14px;font-weight:650;padding:0 6px}
+.network-field{margin:10px 0}.network-field label{margin-bottom:5px}
+.network-field textarea{width:100%;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.network-actions{flex-shrink:0;display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.form-error{flex-shrink:0;color:#ff9393}.form-error:empty{display:none}
+.tool-choice{display:block;width:100%;text-align:left;margin:10px 0;padding:14px}
+.apply-setting{display:flex;align-items:center;gap:6px;font-weight:600;margin-top:18px}
+.network-summary{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11px;line-height:1.5}
+.network-summary span{border:1px solid var(--line);border-radius:4px;padding:3px 6px}
+.group-start{border-left:3px solid #6b9ece!important}
+.ports-rows{overflow-x:auto}.device,.device-wrap{min-width:0}
+.connection-details{white-space:normal!important;overflow-wrap:anywhere}
+#connTable{table-layout:auto}#connTable td:last-child{min-width:80px}
+.grid-slim td.connection-details{min-width:170px;max-width:300px}
+.device-head,.device-title{flex-wrap:wrap}.device-head{align-items:center}
+.hovercard{white-space:normal;overflow-wrap:anywhere;max-width:440px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid #71a9ff;outline-offset:2px}
+html.theme-bright .network-dialog{background:#fff;color:#111;--muted:#444;--line:#ccc;--bg:#fff;--ink:#111}
+html.theme-bright .form-error{color:#b42318}
+@media(max-width:700px){.device-wrap.half,.device-wrap.quarter{grid-column:1/-1}.port-row{overflow-x:auto}.grid-slim{display:block;overflow-x:auto}}
+
 </style>
 </head>
 <body>
@@ -240,6 +274,7 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
   <div style="margin-left:auto;display:flex;gap:8px">
 	<button id="btnSettings" class="btn">Settings</button>
     <button id="printSheet">Print layout</button>
+	<button id="printCableLabels">Cable labels</button>
 	<button id="exportDrawIO">Export draw.io</button>
   </div>
 </header>
@@ -268,6 +303,9 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 
     <div class="card">
       <h3>Add device</h3>
+      <label for="deviceTemplate">Device template</label>
+      <select id="deviceTemplate"><option value="">Blank device</option></select>
+      <button id="deleteTemplate" class="mini" type="button" hidden>Delete selected template</button>
       <label for="devName">Name</label>
       <input id="devName" type="text" placeholder="e.g. Core Switch A" />
       <div class="row">
@@ -306,7 +344,7 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 
     <div class="card">
       <h3>Find connection</h3>
-      <input id="searchBox" type="text" placeholder="Filter by device, port, alias, or reserved…" />
+      <input id="searchBox" type="text" placeholder="Filter by device, port, cable, VLAN, or bond…" />
       <div class="small muted" style="margin-top:6px">Filters the connections table.</div>
     </div>
   </aside>
@@ -446,6 +484,10 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 		  <option value="column-bt">Bottom ↑ Top (columns)</option>
 		</select>
 	</div>
+	<div class="row" id="optPortsPerRow">
+	  <label style="min-width:110px">Ports per row</label>
+	  <input id="layoutPortsPerRow" type="number" min="0" max="128" placeholder="Auto (12)" title="0 or empty = Auto (12 full / 6 half). Use 26 for a 52-port 2-row faceplate." />
+	</div>
     <div class="actions">
       <button type="button" id="layoutCancel">Cancel</button>
       <button type="button" id="layoutSave">Save</button>
@@ -469,6 +511,29 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
     </div>
 
     <div class="row">
+      <label for="editDevStp" style="min-width:100px">STP priority</label>
+      <select id="editDevStp" title="802.1D bridge priority. Lower value wins root. Leave blank for non-switches.">
+        <option value="">(none)</option>
+        <option value="0">0</option>
+        <option value="4096">4096</option>
+        <option value="8192">8192</option>
+        <option value="12288">12288</option>
+        <option value="16384">16384</option>
+        <option value="20480">20480</option>
+        <option value="24576">24576</option>
+        <option value="28672">28672</option>
+        <option value="32768">32768 (default)</option>
+        <option value="36864">36864</option>
+        <option value="40960">40960</option>
+        <option value="45056">45056</option>
+        <option value="49152">49152</option>
+        <option value="53248">53248</option>
+        <option value="57344">57344</option>
+        <option value="61440">61440</option>
+      </select>
+    </div>
+
+    <div class="row">
       <label style="min-width:100px">Colour</label>
       <div class="color-picker-row">
         <button type="button" class="color-btn" id="editOpenPalette">Select colour</button>
@@ -485,6 +550,357 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 
 
 <script>
+/* ===================== NETWORK DOCUMENTATION ===================== */
+// All metadata lives in the profile so exports, duplicates and backups are portable.
+function parseNumberList(text, max, label) {
+  var values = new Set();
+  String(text || '').split(',').forEach(function(token) {
+    token = token.trim();
+    if (!token) { if (String(text || '').trim()) throw new Error(label + ': use numbers or ranges separated by commas.'); return; }
+    var match = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(token);
+    if (!match) throw new Error(label + ': use numbers or ranges, for example 1-4,8.');
+    var start = Number(match[1]), end = Number(match[2] || match[1]);
+    if (start < 1 || end > max || start > end) throw new Error(label + ': values must be between 1 and ' + max + ', with ascending ranges.');
+    for (var n = start; n <= end; n++) values.add(n);
+  });
+  return Array.from(values).sort(function(a,b){return a-b;});
+}
+function compactNumbers(values) {
+  var sorted = Array.from(new Set(values)).sort(function(a,b){return a-b;}), parts = [];
+  for (var i=0;i<sorted.length;i++) {
+    var start = sorted[i], end = start;
+    while (i+1<sorted.length && sorted[i+1]===end+1) end=sorted[++i];
+    parts.push(start===end ? String(start) : start+'-'+end);
+  }
+  return parts.join(',');
+}
+function normalizeCable(cable) {
+  var c = cable && typeof cable === 'object' ? cable : {};
+  return {id:String(c.id || ''), medium:String(c.medium || ''), length:String(c.length || ''), color:String(c.color || ''), notes:String(c.notes || '')};
+}
+function normalizeNetworkMetadata(st) {
+  st.portVlanConfigs = st.portVlanConfigs && typeof st.portVlanConfigs === 'object' ? st.portVlanConfigs : {};
+  st.deviceTemplates = Array.isArray(st.deviceTemplates) ? st.deviceTemplates : [];
+  var devices = new Map(st.devices.map(function(d){return [String(d.id),d];}));
+  st.devices.forEach(function(d){
+    ['portGroups','bonds'].forEach(function(field){
+      var used = new Set();
+      d[field] = (Array.isArray(d[field]) ? d[field] : []).filter(function(g){return g && typeof g === 'object';}).map(function(g){
+        g.id = g.id || uid(); g.name = String(g.name || 'Unnamed');
+        g.ports = (Array.isArray(g.ports) ? g.ports : []).filter(function(p){
+          if (!Number.isInteger(p) || p<1 || p>d.ports || used.has(p)) return false;
+          used.add(p); return true;
+        }).sort(function(a,b){return a-b;});
+        return g;
+      }).filter(function(g){return g.ports.length;});
+    });
+  });
+  ['portAliases','reservedPorts','portSpeeds','portVlans','portLinkedToNames','portVlanConfigs'].forEach(function(field){
+    if (!st[field] || typeof st[field] !== 'object') st[field] = {};
+    Object.keys(st[field]).forEach(function(k){
+      var parts=k.split(':'), d=devices.get(parts[0]), p=Number(parts[1]);
+      if (!d || !Number.isInteger(p) || p<1 || p>d.ports) delete st[field][k];
+    });
+  });
+  st.devices.forEach(function(d){
+    Object.keys(d.portNames || {}).forEach(function(k){if (Number(k.split(':')[1])>d.ports) delete d.portNames[k];});
+  });
+  st.links.forEach(function(link){link.cable=normalizeCable(link.cable);});
+}
+function portCapability(d, port) {
+  if (!d) return {};
+  return (d.portGroups || []).find(function(g){return g.ports.includes(port);}) || {maxSpeed:d.maxSpeed || '', connector:''};
+}
+function vlanConfig(ep) {
+  var k=keyFor(ep.deviceId,ep.port,ep.sub), c=state.portVlanConfigs[k];
+  if (c) return c;
+  var old=(state.portVlans || {})[k];
+  return old ? {mode:'access',access:Number(old),native:null,tagged:[]} : {mode:'',access:null,native:null,tagged:[]};
+}
+function vlanSummary(ep) {
+  var c=vlanConfig(ep);
+  if (c.mode==='access') return 'Access '+c.access;
+  if (c.mode==='trunk') return 'Trunk · native '+(c.native || 'none')+' · tagged '+(compactNumbers(c.tagged || []) || 'none');
+  return 'VLAN unspecified';
+}
+function saveVlanConfig(ep, config) {
+  var k=keyFor(ep.deviceId,ep.port,ep.sub);
+  delete state.portVlans[k];
+  if (!config.mode) delete state.portVlanConfigs[k];
+  else {
+    state.portVlanConfigs[k]=deepClone(config);
+    if (config.mode==='access') state.portVlans[k]=config.access;
+  }
+}
+function bondFor(ep) {
+  var d=deviceById(ep.deviceId);
+  return d && (d.bonds || []).find(function(b){return b.ports.includes(ep.port);});
+}
+function bondSummary(ep) {
+  var b=bondFor(ep); return b ? b.name+' ('+(b.mode==='static' ? 'Static' : 'LACP')+')' : '';
+}
+function cableSummary(link) {
+  var c=normalizeCable(link.cable);
+  return [c.id,c.medium,c.length ? c.length+' m' : '',c.color,c.notes].filter(Boolean).join(' · ');
+}
+function endpointLabel(ep) {
+  var d=deviceById(ep.deviceId);
+  return (d ? d.name : 'Unknown')+' — '+((d && d.portNames && d.portNames[keyFor(ep.deviceId,ep.port,ep.sub)]) || portLabelDefault(ep.port,ep.sub));
+}
+function linkDetails(link) {
+  return [cableSummary(link),endpointLabel(link.a)+': '+vlanSummary(link.a),endpointLabel(link.b)+': '+vlanSummary(link.b),bondSummary(link.a),bondSummary(link.b)].filter(Boolean).join('\n');
+}
+function hasEndpointData(d) {
+  return state.links.some(function(l){return l.a.deviceId===d.id || l.b.deviceId===d.id;}) ||
+    ['portAliases','reservedPorts','portSpeeds','portVlans','portVlanConfigs','portLinkedToNames'].some(function(field){
+      return Object.keys(state[field] || {}).some(function(k){return k.startsWith(d.id+':');});
+    }) || Object.keys(d.portNames || {}).length || (d.bonds || []).length;
+}
+function deviceNetworkSummary(d) {
+  var box=el('div',{class:'network-summary'});
+  (d.portGroups || []).forEach(function(g){box.appendChild(el('span',{},g.name+' · '+compactNumbers(g.ports)+' · '+(g.connector || 'Connector unspecified')+' · '+(g.maxSpeed || 'Speed unspecified')));});
+  (d.bonds || []).forEach(function(b){box.appendChild(el('span',{},b.name+' · '+(b.mode==='static'?'Static':'LACP')+' · ports '+compactNumbers(b.ports)+(b.ports.length<2?' · Needs another member':'')));});
+  return box;
+}
+
+/* Native dialogs provide Escape, focus containment and keyboard access. */
+function networkDialog(title) {
+  var prior=document.getElementById('networkDialog'); if (prior) {prior.close(); prior.remove();}
+  hcHide();
+  var opener=document.activeElement;
+  var dialog=el('dialog',{id:'networkDialog',class:'network-dialog','aria-labelledby':'networkDialogTitle'});
+  var form=el('form',{}), body=el('div',{class:'network-dialog-body'}), error=el('p',{class:'form-error',role:'alert'});
+  var cancel=el('button',{type:'button',onclick:function(){dialog.close();}},'Cancel');
+  var submit=el('button',{type:'submit'},'Save');
+  form.append(el('h2',{id:'networkDialogTitle'},title),body,error,el('div',{class:'network-actions'},cancel,submit));
+  dialog.append(form); document.body.append(dialog);
+  dialog.addEventListener('close',function(){dialog.remove(); if (opener && opener.isConnected && !document.querySelector('#networkDialog[open]')) opener.focus();});
+  dialog.showModal();
+  return {dialog:dialog,body:body,submit:submit,form:form,error:error,save:function(action){
+    form.onsubmit=function(e){e.preventDefault(); error.textContent=''; try{action(); saveStore(); render(); dialog.close(); dialog.remove();}catch(err){error.textContent=err.message;}};
+  }};
+}
+function field(parent, label, control) {
+  if (!control.id) control.id='field-'+uid();
+  parent.appendChild(el('div',{class:'network-field'},el('label',{for:control.id},label),control));
+  return control;
+}
+function textField(parent,label,value,placeholder) {
+  return field(parent,label,el('input',{type:'text',value:value == null ? '' : String(value),placeholder:placeholder || ''}));
+}
+function selectField(parent,label,options,value) {
+  var select=el('select',{});
+  options.forEach(function(option){var pair=Array.isArray(option)?option:[option,option]; select.appendChild(el('option',{value:pair[0]},pair[1]));});
+  select.value=value || ''; return field(parent,label,select);
+}
+function speedOptions() {return [['','Unspecified'],'100 Mbit','1 Gbit','2.5 Gbit','5 Gbit','10 Gbit','25 Gbit','40 Gbit','100 Gbit'];}
+function openDeviceTools(d) {
+  var ui=networkDialog(d.name+' — Configure ports'); ui.submit.hidden=true;
+  ui.body.appendChild(el('p',{class:'muted'},'Document port capabilities and configuration. These settings do not change the physical device.'));
+  [['Edit ports in bulk',function(){openPortEditor(d);}],['Port groups',function(){openGroupEditor(d,false);}],['LAG / bond groups',function(){openGroupEditor(d,true);}],['Save as device template',function(){openSaveTemplate(d);}]].forEach(function(item){
+    ui.body.appendChild(el('button',{type:'button',class:'tool-choice',onclick:item[1]},item[0]));
+  });
+}
+function vlanFields(parent,config) {
+  var box=el('fieldset',{},el('legend',{},'VLAN configuration')); parent.appendChild(box);
+  var mode=selectField(box,'Port mode',[['','Unspecified'],['access','Access'],['trunk','Trunk']],config.mode);
+  var access=textField(box,'Access VLAN',config.access,'1–4094');
+  var native=textField(box,'Native / untagged VLAN',config.native,'Optional; blank means none');
+  var tagged=textField(box,'Allowed tagged VLANs',compactNumbers(config.tagged || []),'10,20,100-110; blank means none');
+  function update(){access.parentElement.hidden=mode.value!=='access'; native.parentElement.hidden=tagged.parentElement.hidden=mode.value!=='trunk';}
+  mode.onchange=update; update();
+  function vlanNumber(input,required){
+    if (!input.value.trim() && !required) return null;
+    if (!/^\d+$/.test(input.value.trim()) || Number(input.value)<1 || Number(input.value)>4094) throw new Error('VLAN IDs must be whole numbers from 1 to 4094.');
+    return Number(input.value);
+  }
+  return {box:box,read:function(){
+    var c={mode:mode.value,access:null,native:null,tagged:[]};
+    if (c.mode==='access') c.access=vlanNumber(access,true);
+    if (c.mode==='trunk') {
+      c.native=vlanNumber(native,false); c.tagged=parseNumberList(tagged.value,4094,'Tagged VLANs');
+      if (c.native && c.tagged.includes(c.native)) throw new Error('The native VLAN must not also appear in the tagged VLAN list.');
+    }
+    return c;
+  }};
+}
+function openPortEditor(d, single) {
+  var ui=networkDialog(d.name+' — '+(single ? portLabelDefault(single.port,single.sub) : 'Bulk edit ports'));
+  var ep=single && {deviceId:d.id,port:single.port,sub:single.sub};
+  var range,side;
+  if (!single) {
+    ui.body.appendChild(el('p',{class:'muted'},'Only checked settings change. All selected ports are validated before anything is saved.'));
+    range=textField(ui.body,'Ports','', '1-24,49,50'); range.required=true;
+    if (d.dualLink) side=selectField(ui.body,'Side',[['both','Both sides'],['0','Side 1'],['1','Side 2']],'both');
+  }
+  var rename;
+  if (single && store.settings.enablePortRename) rename=textField(ui.body,'Port name',(d.portNames || {})[keyFor(d.id,ep.port,ep.sub)] || '','Blank restores the default');
+  var alias=textField(ui.body,'Alias',single ? aliasFor(d.id,ep.port,ep.sub) : '','Optional');
+  var speed=selectField(ui.body,'Recorded link speed',speedOptions(),single ? speedFor(d.id,ep.port,ep.sub) : '');
+  var vlan=vlanFields(ui.body,single ? vlanConfig(ep) : {mode:'',tagged:[]});
+  function toggle(label,container){
+    var checkbox=el('input',{type:'checkbox'});
+    var row=el('label',{class:'apply-setting'},checkbox,' '+label); container.before(row); container.disabled=true;
+    if (container.tagName!=='FIELDSET') container.querySelectorAll('input,select').forEach(function(i){i.disabled=true;});
+    checkbox.onchange=function(){container.disabled=!checkbox.checked; container.querySelectorAll('input,select').forEach(function(i){i.disabled=!checkbox.checked;});};
+    return checkbox;
+  }
+  var applyAlias,applySpeed,applyVlan;
+  if (!single) {applyAlias=toggle('Apply alias',alias.parentElement); applySpeed=toggle('Apply speed',speed.parentElement); applyVlan=toggle('Apply VLAN configuration',vlan.box);}
+  if (single) {
+    var link=linkForPort(d.id,ep.port,ep.sub);
+    ui.body.appendChild(el('p',{class:'muted'},'Capability: '+[portCapability(d,ep.port).connector,portCapability(d,ep.port).maxSpeed].filter(Boolean).join(' · ')+' · '+(bondSummary(ep) || 'No bond')));
+    if (link) ui.body.appendChild(el('p',{},'Connected: '+endpointLabel(getPeer(d.id,ep.port,ep.sub))+'. Cable details are editable in the Connections table.'));
+  }
+  ui.save(function(){
+    var ports=single ? [single.port] : parseNumberList(range.value,d.ports,'Ports');
+    if (!ports.length) throw new Error('Select at least one port.');
+    if (!single && !applyAlias.checked && !applySpeed.checked && !applyVlan.checked) throw new Error('Check at least one setting to apply.');
+    var config=(single || applyVlan.checked) ? vlan.read() : null;
+    var endpoints=[];
+    ports.forEach(function(p){
+      var sides=single ? [single.sub] : d.dualLink ? (side.value==='both' ? [0,1] : [Number(side.value)]) : [null];
+      sides.forEach(function(s){endpoints.push({deviceId:d.id,port:p,sub:s});});
+      if (single || applySpeed.checked) {
+        var cap=portCapability(d,p).maxSpeed;
+        if (speed.value && cap && speedToMbps(speed.value)>speedToMbps(cap)) throw new Error('Port '+p+' speed exceeds its '+cap+' capability.');
+      }
+    });
+    endpoints.forEach(function(endpoint){
+      var k=keyFor(d.id,endpoint.port,endpoint.sub);
+      if (single || applyAlias.checked) {if (alias.value.trim()) state.portAliases[k]=alias.value.trim(); else delete state.portAliases[k];}
+      if (single || applySpeed.checked) setSpeedFor(d.id,endpoint.port,endpoint.sub,speed.value);
+      if (config) saveVlanConfig(endpoint,config);
+      if (rename) {d.portNames=d.portNames || {}; if (rename.value.trim()) d.portNames[k]=rename.value.trim(); else delete d.portNames[k];}
+    });
+  });
+}
+function validateGroups(d, groups, bonds) {
+  var used=new Set(), names=new Set();
+  groups.forEach(function(g){
+    if (!g.name.trim()) throw new Error('Every group needs a name.');
+    if (names.has(g.name.toLowerCase())) throw new Error('Group names must be unique on this device.');
+    names.add(g.name.toLowerCase());
+    if (g.ports.length<(bonds?2:1)) throw new Error(bonds?'A bond needs at least two member ports.':'A port group needs at least one port.');
+    g.ports.forEach(function(p){if (used.has(p)) throw new Error('Port '+p+' belongs to more than one '+(bonds?'bond':'port group')+'.'); used.add(p);});
+    if (bonds && d.dualLink) throw new Error('Bonds are available on single-link devices, not dual-link patch panels.');
+  });
+  return groups;
+}
+function openGroupEditor(d,bonds) {
+  var ui=networkDialog(d.name+' — '+(bonds?'LAG / bond groups':'Port groups')), editors=[];
+  ui.body.appendChild(el('p',{class:'muted'},bonds?'Each bond documents member ports on this device. Configure the peer device’s bond separately.':'Each group has its own connector and maximum speed. Ungrouped ports use the device maximum.'));
+  var list=el('div',{}); ui.body.appendChild(list);
+  function add(g){
+    var box=el('fieldset',{},el('legend',{},bonds?'Bond':'Port group'));
+    var name=textField(box,'Group name',g.name,bonds?'bond0':'Uplinks');
+    var ports=textField(box,'Member ports',compactNumbers(g.ports || []),'1-4,8');
+    var mode,connector,speed;
+    if (bonds) mode=selectField(box,'Bond mode',[['lacp','LACP'],['static','Static']],g.mode || 'lacp');
+    else {
+      connector=selectField(box,'Connector',[['','Unspecified'],'RJ45','SFP','SFP+','SFP28','QSFP+','QSFP28','QSFP-DD'],g.connector);
+      speed=selectField(box,'Maximum port speed',speedOptions(),g.maxSpeed);
+    }
+    var entry={box:box,read:function(){return Object.assign({id:g.id || uid(),name:name.value.trim(),ports:parseNumberList(ports.value,d.ports,'Member ports')}, bonds?{mode:mode.value}:{connector:connector.value,maxSpeed:speed.value});}};
+    editors.push(entry);
+    box.appendChild(el('button',{type:'button',class:'btn-danger',onclick:function(){box.remove();editors=editors.filter(function(e){return e!==entry;});}},'Remove group'));
+    list.appendChild(box);
+  }
+  (d[bonds?'bonds':'portGroups'] || []).forEach(add);
+  ui.body.appendChild(el('button',{type:'button',onclick:function(){add({});}},bonds?'Add bond':'Add port group'));
+  ui.save(function(){d[bonds?'bonds':'portGroups']=validateGroups(d,editors.map(function(e){return e.read();}),bonds);});
+}
+function openCableEditor(link) {
+  var ui=networkDialog('Cable details'), c=normalizeCable(link.cable);
+  ui.body.appendChild(el('p',{},endpointLabel(link.a)+' ⇄ '+endpointLabel(link.b)));
+  var id=textField(ui.body,'Cable ID',c.id,'CBL-001');
+  var medium=selectField(ui.body,'Medium',[['','Unspecified'],'Cat5e','Cat6','Cat6A','DAC','AOC','Single-mode fiber','Multimode fiber','Other'],c.medium);
+  var length=field(ui.body,'Length (metres)',el('input',{type:'number',min:'0',step:'any',value:c.length}));
+  var color=textField(ui.body,'Cable color',c.color,'Blue');
+  var notes=field(ui.body,'Notes',el('textarea',{rows:'3'},c.notes));
+  ui.save(function(){
+    if (length.value && (!Number.isFinite(Number(length.value)) || Number(length.value)<0)) throw new Error('Cable length must be a non-negative number.');
+    if (id.value.trim() && state.links.some(function(l){return l.id!==link.id && l.cable && l.cable.id.toLowerCase()===id.value.trim().toLowerCase();})) throw new Error('That cable ID is already in use in this profile.');
+    link.cable={id:id.value.trim(),medium:medium.value,length:length.value,color:color.value.trim(),notes:notes.value.trim()};
+  });
+}
+function makeDeviceTemplate(d,name) {
+  var device=deepClone(d);
+  delete device.id; delete device.name; delete device.portNames; delete device.stpPriority; delete device.bonds;
+  var portSettings={};
+  // Only reusable configuration is copied, never links, reservations, aliases or cable IDs.
+  ['portSpeeds','portVlans','portVlanConfigs'].forEach(function(field){
+    portSettings[field]={};
+    Object.keys(state[field]).forEach(function(k){if(k.startsWith(d.id+':')) portSettings[field][k.slice(d.id.length+1)]=deepClone(state[field][k]);});
+  });
+  return {id:uid(),name:name,device:device,portSettings:portSettings};
+}
+function openSaveTemplate(d) {
+  var ui=networkDialog('Save device template');
+  ui.body.appendChild(el('p',{class:'muted'},'Saves the faceplate layout, port groups, speeds and VLAN configuration in this profile. Connections, aliases, reservations, STP priority and bonds are excluded. Templates travel with profile exports and backups.'));
+  var name=textField(ui.body,'Template name',d.name); name.required=true;
+  ui.save(function(){
+    if (!name.value.trim()) throw new Error('Enter a template name.');
+    if (state.deviceTemplates.some(function(t){return t.name.toLowerCase()===name.value.trim().toLowerCase();})) throw new Error('A template with that name already exists.');
+    state.deviceTemplates.push(makeDeviceTemplate(d,name.value.trim()));
+  });
+}
+function createDeviceFromTemplate(id,name) {
+  var t=state.deviceTemplates.find(function(t){return t.id===id;});
+  if (!t) throw new Error('Template no longer exists.');
+  if (t.device.ports > getMaxPortsSetting()) throw new Error('Template exceeds the maximum port count in Settings.');
+  var d=deepClone(t.device); d.id=uid(); d.name=name; d.portNames={}; d.bonds=[]; d.stpPriority=null;
+  (d.portGroups || []).forEach(function(g){g.id=uid();});
+  state.devices.push(d);
+  ['portSpeeds','portVlans','portVlanConfigs'].forEach(function(field){
+    Object.keys((t.portSettings || {})[field] || {}).forEach(function(suffix){state[field][d.id+':'+suffix]=deepClone(t.portSettings[field][suffix]);});
+  });
+  normalizeState(state); return d;
+}
+function refreshTemplates() {
+  var select=$('#deviceTemplate'); if (!select) return;
+  var selected=select.value; select.replaceChildren(el('option',{value:''},'Blank device'));
+  (state.deviceTemplates || []).forEach(function(t){select.appendChild(el('option',{value:t.id},t.name));});
+  select.value=(state.deviceTemplates || []).some(function(t){return t.id===selected;})?selected:'';
+  $('#devPorts').disabled=!!select.value; $('#deleteTemplate').hidden=!select.value;
+  select.onchange=function(){
+    var t=state.deviceTemplates.find(function(t){return t.id===select.value;});
+    if (t) $('#devPorts').value=t.device.ports;
+    $('#devPorts').disabled=!!t; $('#deleteTemplate').hidden=!t;
+  };
+}
+function networkPrintDetails() {
+  var html='<section class="network-print"><h2>Port configuration</h2>';
+  state.devices.forEach(function(d){
+    html+='<h3>'+escapeXml(d.name)+'</h3>'+deviceNetworkSummary(d).outerHTML;
+    for (var p=1;p<=d.ports;p++) (d.dualLink?[0,1]:[null]).forEach(function(sub){
+      var ep={deviceId:d.id,port:p,sub:sub}, speed=speedFor(d.id,p,sub);
+      if (speed || vlanConfig(ep).mode || bondFor(ep)) html+='<p>'+escapeXml(portLabelDefault(p,sub)+' · '+[speed,vlanSummary(ep),bondSummary(ep)].filter(Boolean).join(' · '))+'</p>';
+    });
+  });
+  html+='<h2>Cable schedule</h2>';
+  state.links.forEach(function(l){html+='<p>'+escapeXml(endpointLabel(l.a)+' ⇄ '+endpointLabel(l.b)+' · '+(cableSummary(l)||'Cable details unspecified'))+'</p>';});
+  return html+'</section>';
+}
+function cableLabelsHTML(links) {
+  var labels='';
+  links.forEach(function(l){
+    [l.a,l.b].forEach(function(local,i){
+      var remote=i===0?l.b:l.a, c=normalizeCable(l.cable);
+      labels+='<article><strong>'+escapeXml(c.id || 'Unlabelled cable')+'</strong><div>At: '+escapeXml(endpointLabel(local))+'</div><div>To: '+escapeXml(endpointLabel(remote))+'</div><small>'+escapeXml([c.medium,c.length?c.length+' m':'',c.color].filter(Boolean).join(' · '))+'</small></article>';
+    });
+  });
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Cable labels</title><style>body{font:12px system-ui;margin:12mm}section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4mm}article{border:1px dashed #777;padding:3mm;break-inside:avoid;overflow-wrap:anywhere}strong{font-size:16px}small{display:block;margin-top:2mm}@media print{button{display:none}}</style></head><body><h1>'+escapeXml(store.current)+' — Cable labels</h1><p>Two labels per cable, one for each end.</p><button onclick="window.print()">Print labels</button><section>'+labels+'</section></body></html>';
+}
+function printCableLabels() {
+  var links=state.links.filter(function(l){return l.cable && l.cable.id;});
+  if (!links.length) {alert('Add a Cable ID in the Connections table before printing labels.');return;}
+  var popup=window.open('','_blank');
+  if (!popup) {alert('Allow popups to open the printable cable labels.');return;}
+  popup.document.write(cableLabelsHTML(links)); popup.document.close();
+}
+/* ===================== END NETWORK DOCUMENTATION ===================== */
+
 /* ===================== HIGHLIGHT TUNING ===================== */
 const HI_OUTLINE = 0; // px: outer white ring 
 const HI_RING    = 5; // px: inner white ring thickness
@@ -500,7 +916,9 @@ var defaultState = {
   reservedPorts: {},
   portSpeeds: {},
   portVlans: {},
-  portLinkedToNames: {}
+  portLinkedToNames: {},
+  portVlanConfigs: {},
+  deviceTemplates: []
 };
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 function uid(){ return 'id_' + Math.random().toString(36).slice(2,10); }
@@ -555,7 +973,10 @@ function normalizeState(st){
     if (d.dualLink === undefined) d.dualLink = false;
     if (d.numbering === undefined) d.numbering = 'row';
 	if (d.widthMode === undefined) d.widthMode = 'half';
+    if (d.portsPerRow === undefined) d.portsPerRow = 0;
+    if (d.stpPriority === undefined) d.stpPriority = null;
   });
+  normalizeNetworkMetadata(st);
 }
 function saveStore(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }catch(e){} }
 
@@ -576,6 +997,28 @@ function el(tag, attrs){
   });
   for(var i=2;i<arguments.length;i++){ var c = arguments[i]; if(c==null) continue; node.appendChild(c.nodeType ? c : document.createTextNode(c)); }
   return node;
+}
+function parseStpPriority(d){
+  if (!d || d.stpPriority == null || d.stpPriority === '') return null;
+  var n = Number(d.stpPriority);
+  return Number.isInteger(n) && n >= 0 && n <= 61440 && n % 4096 === 0 ? n : null;
+}
+function lowestStpPriority(){
+  var vals = [];
+  (state.devices || []).forEach(function(d){
+    var n = parseStpPriority(d);
+    if (n != null) vals.push(n);
+  });
+  if (!vals.length) return null;
+  return Math.min.apply(null, vals);
+}
+function stpBadgeFor(d){
+  var n = parseStpPriority(d);
+  if (n == null) return null;
+  var low = lowestStpPriority();
+  var isRoot = (low != null && n === low);
+  var label = 'STP ' + n + (isRoot ? ' · Root candidate' : '');
+  return el('span', { class: 'stp-badge' + (isRoot ? ' root' : ''), title: isRoot ? 'Lowest recorded priority in this profile; actual root depends on the STP domain and bridge ID' : 'STP bridge priority (lower wins)' }, label);
 }
 function deviceById(id){ for(var i=0;i<state.devices.length;i++){ if(state.devices[i].id===id) return state.devices[i]; } return null; }
 function indexById(id){ return state.devices.findIndex(function(d){return d.id===id;}); }
@@ -724,8 +1167,8 @@ function connectPorts(a, b) {
   var devA = deviceById(a.deviceId);
   var devB = deviceById(b.deviceId);
 
-  var maxA = devA && devA.maxSpeed ? devA.maxSpeed : null;
-  var maxB = devB && devB.maxSpeed ? devB.maxSpeed : null;
+  var maxA = portCapability(devA, a.port).maxSpeed;
+  var maxB = portCapability(devB, b.port).maxSpeed;
 
   var spA = speedToMbps(maxA);
   var spB = speedToMbps(maxB);
@@ -759,8 +1202,8 @@ function recalcLinkSpeedsForDevice(deviceId) {
     const devB = deviceById(b.deviceId);
     if (!devA || !devB) return;
 
-    const spA = speedToMbps(devA.maxSpeed);
-    const spB = speedToMbps(devB.maxSpeed);
+    const spA = speedToMbps(portCapability(devA, a.port).maxSpeed);
+    const spB = speedToMbps(portCapability(devB, b.port).maxSpeed);
 
     const lowest = Math.min(spA, spB);
 
@@ -959,7 +1402,21 @@ function isFullWidthDevice(d){
   return false;
 }
 
+function getPortsPerRow(dev, fullWidth){
+  var custom = Number(dev && dev.portsPerRow);
+  if (custom > 0) return Math.max(1, Math.min(128, Math.floor(custom)));
+  return fullWidth ? 12 : 6;
+}
+
 function splitPortsIntoRows(n, dev){
+  var custom = Number(dev && dev.portsPerRow);
+  if (custom > 0){
+    var per = Math.max(1, Math.min(128, Math.floor(custom)));
+    var rows = [], rem = n;
+    while (rem > 0){ rows.push(Math.min(per, rem)); rem -= per; }
+    return rows;
+  }
+
   if (n === 12 && dev.smallWrap) return [6, 6];
 
   if (n >= 12){
@@ -1108,9 +1565,11 @@ function renderDeviceWrap(d, fullWidth){
   var head = el('div',{class:'device-head'},
     el('div',{class:'device-title'},
       el('span',{class:'swatch', style:'background:'+(d.color||'#888')}),
-      document.createTextNode(d.name||'Unnamed')
+      document.createTextNode(d.name||'Unnamed'),
+      stpBadgeFor(d) || document.createTextNode('')
     ),
     el('div',{class:'device-actions'},
+      el('button',{onclick:function(){ openDeviceTools(d); }}, 'Configure ports'),
       el('button',{title:'Layout options', onclick:function(ev){ ev.stopPropagation(); openLayoutModal(d.id); }}, 'Layout'),
 		el('button', {
 		  title: 'Edit device',
@@ -1126,6 +1585,7 @@ function renderDeviceWrap(d, fullWidth){
           return String(L.a.deviceId)!==String(d.id) && String(L.b.deviceId)!==String(d.id);
         });
         state.devices = state.devices.filter(function(x){ return String(x.id)!==String(d.id); });
+        normalizeNetworkMetadata(state);
         Object.keys(state.portAliases).forEach(function(k){
           if(k.split(':')[0]===String(d.id)) delete state.portAliases[k];
         });
@@ -1207,35 +1667,10 @@ else buildRowMajor();
 
   var rawSpeed = (typeof speedFor === 'function') ? speedFor(d.id, p, sub) : '';
   var spdVal   = fmtSpeed(rawSpeed) || '';
-  var vlanVal  = (typeof vlanFor === 'function') ? vlanFor(d.id, p, sub) : '';
+  var vlanVal = vlanConfig({deviceId:d.id,port:p,sub:sub}).mode ? vlanSummary({deviceId:d.id,port:p,sub:sub}) : '';
 
   var hasSpeed = (rawSpeed !== '' && rawSpeed != null);
   var hasVlan  = (vlanVal  !== '' && vlanVal  != null);
-
-// Auto-negotiate for older links that have no stored speed yet
-if (linked && !hasSpeed) {
-  var dev    = deviceById(d.id);
-  var peerDv = peerDev; // already computed above
-
-  if (dev && dev.maxSpeed && peerDv && peerDv.maxSpeed) {
-    var spA   = speedToMbps(dev.maxSpeed);
-    var spB   = speedToMbps(peerDv.maxSpeed);
-    var low   = Math.min(spA, spB);
-
-    if (low !== Infinity) {
-      var label = low >= 1000 ? (low/1000 + ' Gbit') : (low + ' Mbit');
-
-      // Persist on both ends so future renders see it
-      setSpeedFor(d.id, p, sub, label);
-      setSpeedFor(peer.deviceId, peer.port, peer.sub, label);
-
-      rawSpeed = label;
-      spdVal   = fmtSpeed(label);
-      hasSpeed = true;
-    }
-  }
-}
-
 
 var leftInd  = el('span',{class:'ind spd-dot'}, '');
 var rightInd = el('span',{class:'ind vlan-diamond'}, '');
@@ -1279,7 +1714,7 @@ bindMiniHover(rightInd, 'VLAN',  String(vlanVal));
 // Slow-link indicator: port speed < device max → add "!" before speed square
 (function () {
   var dev = deviceById(d.id);
-  if (!dev || !dev.maxSpeed) return;
+  if (!dev || !portCapability(dev, p).maxSpeed) return;
   if (!rawSpeed) return; // no explicit port speed set → nothing to compare
 
   function toMbps(s) {
@@ -1292,7 +1727,7 @@ bindMiniHover(rightInd, 'VLAN',  String(vlanVal));
     return num; // assume Mbit
   }
 
-  var devMaxMbps = toMbps(dev.maxSpeed);
+  var devMaxMbps = toMbps(portCapability(dev, p).maxSpeed);
   var portMbps   = toMbps(rawSpeed);
 
   if (devMaxMbps && portMbps && portMbps < devMaxMbps) {
@@ -1449,16 +1884,15 @@ var peerEl = el(
       }
     }
 
-    return (
-      '<div class="hc-title">' + (d.name || 'Device') + '</div>' +
-      '<div class="hc-row"><div class="hc-k">' + getPortTerm() + '</div><div>' +
-        p + (sub != null ? '/' + (sub + 1) : '') + '</div></div>' +
-      '<div class="hc-row"><div class="hc-k">Alias</div><div>' + liveAlias + '</div></div>' +
-      '<div class="hc-row"><div class="hc-k">Peer</div><div>' + peerTxt + '</div></div>'+	
-      '<div class="hc-row"><div class="hc-k">Status</div><div>' + status + '</div></div>' +
-      '<div class="hc-row"><div class="hc-k">Link speed</div><div>' + liveSpeed + '</div></div>' +
-      '<div class="hc-row"><div class="hc-k">VLAN</div><div>' + vlanText  + '</div></div>'
-    );
+    var ep = {deviceId:d.id, port:p, sub:sub};
+    var cap = portCapability(d, p);
+    return '<div class="hc-title">' + escapeXml(d.name || 'Device') + '</div>' +
+      [['Port',p + (sub != null ? '/' + (sub + 1) : '')], ['Alias',liveAlias],
+       ['Peer',peerTxt], ['Status',status], ['Recorded speed',liveSpeed],
+       ['Capability',[cap.name,cap.connector,cap.maxSpeed].filter(Boolean).join(' · ') || 'Unspecified'],
+       ['VLAN',vlanSummary(ep)], ['Bond',bondSummary(ep) || 'None'],
+       ['Cable',liveLink ? cableSummary(liveLink) || 'Unspecified' : 'None']]
+      .map(function(row){return '<div class="hc-row"><div class="hc-k">' + row[0] + '</div><div>' + escapeXml(row[1]) + '</div></div>';}).join('');
   }
 
 	node.addEventListener('mouseenter', function (e) {
@@ -1472,6 +1906,12 @@ var peerEl = el(
 
   node.addEventListener('mouseleave', function () { hcHide(); });
 
+  node.tabIndex = 0; node.setAttribute('role','button');
+  node.setAttribute('aria-label', d.name + ' ' + portLabelDefault(p,sub) + '. Enter to select; Shift+F10 to edit.');
+  node.addEventListener('keydown',function(ev){
+    if (ev.key==='Enter' || ev.key===' ') {ev.preventDefault(); node.click();}
+    if (ev.key==='F10' && ev.shiftKey) openSpeedMenu(ev,d.id,p,sub);
+  });
   node.addEventListener('contextmenu', function(ev){
     openSpeedMenu(ev, d.id, p, sub);
   });
@@ -1501,13 +1941,19 @@ var peerEl = el(
     return wrapCell;
   }
 
+	var colsPerRow = getPortsPerRow(d, fullWidth);
 	rows.forEach(function(count, rIndex){
 	  var row = el('div',{class:'port-row'});
-	  row.style.gridTemplateColumns = fullWidth ? 'repeat(12, var(--portW12))' : 'repeat(6, var(--portW6))';
+	  row.dataset.columns = colsPerRow;
+	  row.style.gridTemplateColumns = 'repeat(' + colsPerRow + ', minmax(28px, 1fr))';
 	  row.style.gap = fullWidth ? 'var(--portGapFull)' : 'var(--portGapHalf)';
 	  for (var c=0; c<count; c++){
 		var p = seqByRow[rIndex][c];
-		row.appendChild(renderPortCell(d, p));
+		var cell = renderPortCell(d, p);
+        var group = portCapability(d, p);
+        if (group.name) { cell.classList.add('grouped-port'); cell.title = group.name + ' · ' + group.connector + ' · ' + (group.maxSpeed || 'Speed unspecified'); }
+        if (group.ports && p === group.ports[0]) cell.classList.add('group-start');
+        row.appendChild(cell);
 	  }
 	  portsContainer.appendChild(row);
 	});
@@ -1516,7 +1962,7 @@ var peerEl = el(
   class:'device',
   id:'dev-'+d.id,
   style:'--device-border:' + (d.color || '#888')
-}, head, meta, portsContainer);
+}, head, meta, deviceNetworkSummary(d), portsContainer);
   wrap.appendChild(card);
   return wrap;
 }
@@ -1549,6 +1995,7 @@ function changePorts(d, newCount){
     });
   }
   d.ports = newCount;
+  normalizeNetworkMetadata(state);
 }
 
 /* ===================== CONNECTIONS TABLE ===================== */
@@ -1585,7 +2032,7 @@ function renderConnections() {
       ...portSearchTokens(L.b.port),
       bPortLabel,
       aAlias,
-      bAlias
+      bAlias, cableSummary(L), vlanSummary(L.a), vlanSummary(L.b), bondSummary(L.a), bondSummary(L.b)
     ];
 
     var text = parts.join(' ').toLowerCase();
@@ -1605,7 +2052,10 @@ function renderConnections() {
       ),
       el('td', {}, aPortLabel),
       el('td', {}, aAlias),
-      el('td', {}, '⇄'),
+      el('td', {class:'connection-details', title:linkDetails(L)},
+        el('button', {class:'mini', onclick:function(){openCableEditor(L);}}, (L.cable && L.cable.id) || 'Cable details'),
+        el('div', {class:'small'}, vlanSummary(L.a) + ' ⇄ ' + vlanSummary(L.b)),
+        el('div', {class:'small'}, [bondSummary(L.a), bondSummary(L.b)].filter(Boolean).join(' ⇄ '))),
       el(
         'td',
         { class: 'deviceB' },
@@ -1816,272 +2266,8 @@ function closeSpeedMenu(){
 }
 
 function openSpeedMenu(e, deviceId, port, sub){
-  closeSpeedMenu();
-  e.preventDefault();
-
-  __menuOpen = true;
-  hcHide();
-
-  clearSelectionOutlines();
-  const portEl = document.querySelector(
-    `.port[data-device-id="${deviceId}"][data-port="${port}"]${sub != null ? `[data-sub="${sub}"]` : ''}`
-  );
-  if (portEl) outlineForSelection(portEl);
-
-  function defaultLabel(p, s){
-    if (typeof portLabelDefault === 'function') return portLabelDefault(p, s);
-    return 'Port ' + p + (s != null ? '/' + (s + 1) : '');
-  }
-
-  // Current link (if any) for this endpoint
-  var link = (typeof getLinkForEndpoint === 'function')
-    ? getLinkForEndpoint(deviceId, port, sub)
-    : null;
-
-  // Peer info (if linked)
-  var peer = null;
-  if (link) {
-    var aSub = (link.a.sub == null ? null : link.a.sub);
-    var bSub = (link.b.sub == null ? null : link.b.sub);
-    var subN = (sub == null ? null : sub);
-
-    if (link.a.deviceId === deviceId && link.a.port === port && aSub === subN) peer = link.b;
-    else peer = link.a;
-  }
-
-  var curSpeed = speedFor(deviceId, port, sub) || '';
-  var curVlan  = vlanFor(deviceId, port, sub);
-  var curVlanStr = (curVlan === '' || curVlan == null) ? '' : String(curVlan);
-
-  var peerDev = null;
-  var peerPortLabel = '';
-  if (peer) {
-    peerDev = deviceById(peer.deviceId);
-    peerPortLabel =
-      (peerDev && peerDev.portNames && peerDev.portNames[keyFor(peer.deviceId, peer.port, peer.sub)]) ||
-      defaultLabel(peer.port, peer.sub);
-  }
-
-  var div = document.createElement('div');
-  div.className = 'speed-menu';
-
-  div.innerHTML =
-    '<div style="font-size:12px;margin-bottom:6px;font-weight:600">Port settings</div>' +
-
-    (store.settings.enablePortRename ? (
-      '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px">' +
-        '<label for="__nameInput" style="margin:0;white-space:nowrap;min-width:70px">Port name</label>' +
-        '<input id="__nameInput" type="text" placeholder="e.g. Channel 1" ' +
-               'style="flex:1;padding:4px 6px;font-size:12px;border-radius:6px;' +
-                      'border:1px solid var(--line);background:var(--bg);color:var(--ink)">' +
-        '<button id="__nameReset" type="button" title="Reset to default" ' +
-               'style="padding:4px 6px;font-size:11px;border-radius:6px;border:1px solid var(--line);' +
-                      'background:var(--bg);color:var(--ink);cursor:pointer;">↺</button>' +
-      '</div>'
-    ) : '') +
-
-    '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px">' +
-      '<label for="__aliasInput" style="margin:0;white-space:nowrap;min-width:70px">Alias</label>' +
-      '<input id="__aliasInput" type="text" placeholder="Alias (optional)" ' +
-             'style="flex:1;padding:4px 6px;font-size:12px;border-radius:6px;' +
-                    'border:1px solid var(--line);background:var(--bg);color:var(--ink)">' +
-    '</div>' +
-
-    '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px">' +
-      '<label for="__speedSelect" style="margin:0;white-space:nowrap;min-width:70px">Link speed</label>' +
-      '<select id="__speedSelect" style="flex:1">' +
-        '<option value="">(none)</option>' +
-        '<option>100 Mbit</option><option>1 Gbit</option><option>2.5 Gbit</option>' +
-        '<option>5 Gbit</option><option>10 Gbit</option><option>25 Gbit</option>' +
-        '<option>40 Gbit</option><option>100 Gbit</option>' +
-      '</select>' +
-    '</div>' +
-
-    '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px">' +
-      '<label for="__vlanInput" style="margin:0;white-space:nowrap;min-width:70px">VLAN</label>' +
-      '<input id="__vlanInput" type="number" min="1" max="4094" step="1" placeholder="1–4094" ' +
-             'style="flex:1;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid var(--line);' +
-                    'background:var(--bg);color:var(--ink)">' +
-    '</div>' +
-
-    (peerDev ? (
-      '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px">' +
-        '<label for="__linkedTo" style="margin:0;white-space:nowrap;min-width:70px">Linked To</label>' +
-        '<input id="__linkedTo" type="text" readonly ' +
-          'value="' + peerDev.name + ' – ' + peerPortLabel + '" ' +
-          'style="padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);' +
-                 'display:inline-block;white-space:nowrap;overflow:hidden;" />' +
-      '</div>'
-    ) : '') +
-
-'<div style="display:flex;gap:6px;justify-content:space-between">' +
-
-  (peerDev
-    ? '<button id="__unlinkBtn" class="btn" type="button" ' +
-        'style="background:#b91c1c;border-color:#b91c1c;color:#fff;font-weight:700">Unlink</button>'
-    : '<div></div>'
-  ) +
-
-  '<div style="display:flex;gap:6px">' +
-    '<button id="__speedCancel" class="btn" type="button">Cancel</button>' +
-    '<button id="__speedSave"   class="btn" type="button" style="font-weight:700">Save</button>' +
-  '</div>' +
-
-'</div>';
-
-  document.body.appendChild(div);
-  __speedMenu = div;
-
-  // Auto-fit "Linked to" width (your existing behaviour)
-  (function() {
-    const inp = div.querySelector('#__linkedTo');
-    if (!inp) return;
-
-    const measurer = document.createElement('span');
-    measurer.style.cssText =
-      'position:absolute;visibility:hidden;white-space:nowrap;' +
-      'padding:4px 6px;font-size:12px;font-family:inherit;';
-    measurer.textContent = inp.value;
-
-    document.body.appendChild(measurer);
-
-    const baseWidth = measurer.offsetWidth;
-    const extra     = 16;
-    const minWidth  = 160;
-
-    inp.style.width = Math.max(minWidth, baseWidth + extra) + 'px';
-
-    document.body.removeChild(measurer);
-  })();
-
-  div.addEventListener('mousedown', function(ev){ ev.stopPropagation(); }, { capture:true });
-
-  // Port name input + reset behaviour
-  var nin = div.querySelector('#__nameInput');
-  if (store.settings.enablePortRename && nin) {
-    const dev = deviceById(deviceId);
-    const k = keyFor(deviceId, port, sub);
-    const currentName =
-      (dev && dev.portNames && dev.portNames[k]) ||
-      defaultLabel(port, sub);
-
-    nin.value = currentName;
-  }
-
-  const resetBtn = div.querySelector('#__nameReset');
-  if (resetBtn && nin) {
-    resetBtn.addEventListener('click', function(){
-      // TRUE reset: delete stored override
-      var d = deviceById(deviceId);
-      if (d && d.portNames) {
-        delete d.portNames[keyFor(deviceId, port, sub)];
-        if (Object.keys(d.portNames).length === 0) delete d.portNames;
-        saveStore();
-      }
-      nin.value = defaultLabel(port, sub);
-      render();
-    });
-  }
-
-  var ain = div.querySelector('#__aliasInput');
-  var sel = div.querySelector('#__speedSelect');
-  var vin = div.querySelector('#__vlanInput');
-
-  ain.value = aliasFor(deviceId, port, sub) || '';
-  sel.value = curSpeed || '';
-  vin.value = curVlanStr;
-
-  // Hook up Unlink
-  var unlinkBtn = div.querySelector('#__unlinkBtn');
-  if (unlinkBtn && link && peerDev) {
-    unlinkBtn.addEventListener('click', function(){
-      var thisDev = deviceById(deviceId);
-      var thisName = thisDev ? thisDev.name : 'Unknown';
-      var thisPortLabel =
-        (thisDev && thisDev.portNames && thisDev.portNames[keyFor(deviceId, port, sub)]) ||
-        defaultLabel(port, sub);
-
-      var peerName = peerDev ? peerDev.name : 'Unknown';
-
-      var msg =
-        'Unlink connection?\n\n' +
-        thisName + ' — ' + thisPortLabel + '\n' +
-        '↔\n' +
-        peerName + ' — ' + peerPortLabel;
-
-      if (!confirm(msg)) return;
-
-      unlink(link.id);
-      closeSpeedMenu();
-      render();
-    });
-  }
-
-  var x = e.clientX, y = e.clientY;
-  var vw = window.innerWidth, vh = window.innerHeight;
-  var rw = 260, rh = 150;
-  if (x + rw + 8 > vw) x = vw - rw - 8;
-  if (y + rh + 8 > vh) y = vh - rh - 8;
-  div.style.left = x + 'px';
-  div.style.top  = y + 'px';
-
-  function doSave(){
-    // Port rename (store ONLY real overrides)
-    if (store.settings.enablePortRename && nin) {
-      var dev = deviceById(deviceId);
-      if (dev) {
-        var k = keyFor(deviceId, port, sub);
-        var val = (nin.value || '').trim();
-        var def = defaultLabel(port, sub);
-
-        if (!val || val === def) {
-          if (dev.portNames) {
-            delete dev.portNames[k];
-            if (Object.keys(dev.portNames).length === 0) delete dev.portNames;
-          }
-        } else {
-          dev.portNames = dev.portNames || {};
-          dev.portNames[k] = val;
-        }
-      }
-    }
-
-    // Alias
-    var aliasRaw = ain.value.trim();
-    var aliasKey = keyFor(deviceId, port, sub);
-    if (!aliasRaw) delete state.portAliases[aliasKey];
-    else state.portAliases[aliasKey] = aliasRaw;
-
-    // Speed + VLAN
-    var speedVal = sel.value || '';
-    var vlanRaw  = (vin.value || '').trim();
-    var vlanVal  = vlanRaw === '' ? '' : Math.max(1, Math.min(4094, Number(vlanRaw) || 0));
-
-    setSpeedFor(deviceId, port, sub, speedVal);
-    setVlanFor(deviceId, port, sub, vlanVal);
-
-    saveStore();
-    render();
-    closeSpeedMenu();
-  }
-
-  div.querySelector('#__speedSave').addEventListener('click', doSave);
-  div.querySelector('#__speedCancel').addEventListener('click', closeSpeedMenu);
-
-  vin.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter') doSave();
-    if (ev.key === 'Escape') closeSpeedMenu();
-  });
-
-  setTimeout(function(){
-    function onDoc(e2){
-      if (__speedMenu && !__speedMenu.contains(e2.target)) closeSpeedMenu();
-    }
-    function onEsc(e2){ if (e2.key === 'Escape') closeSpeedMenu(); }
-    document.addEventListener('mousedown', onDoc, { once:true, capture:true });
-    document.addEventListener('keydown', onEsc, { once:true });
-    window.addEventListener('wheel', closeSpeedMenu, { once:true, passive:true });
-  }, 0);
+  e.preventDefault(); e.stopPropagation(); closeSpeedMenu(); hcHide();
+  openPortEditor(deviceById(deviceId), {port:port, sub:sub});
 }
 
 /* ===================== PRINT ===================== */
@@ -2118,12 +2304,14 @@ function openPrintSheet(includeTable){
   + '.device{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;overflow:hidden}\n'
   + '.device-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}\n'
   + '.device-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}\n'
+  + '.stp-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;border:1px solid #bbb;font-size:10px;font-weight:700;color:#333;white-space:nowrap}\n'
+  + '.stp-badge.root{border-color:#b8860b;color:#6b4f00;background:#f8e7b0}\n'
   + '.device-actions,.inline-controls{display:none!important}\n'
   + '.swatch{width:12px;height:12px;border-radius:3px;border:1px solid #0003;display:inline-block}\n'
   + '.ports-rows{display:flex;flex-direction:column;gap:8px;margin-top:10px;overflow:hidden}\n'
   + '.port-row{display:grid;justify-content:start;align-content:start}\n'
-  + '.device-wrap.full .port-row{grid-template-columns:repeat(12,minmax(40px,1fr));gap:10px !important;}\n'
-  + '.device-wrap:not(.full) .port-row{grid-template-columns:repeat(6,minmax(40px,1fr));gap:7px !important;}\n'
+  + '.device-wrap.full .port-row{gap:10px;}\n'
+  + '.device-wrap:not(.full) .port-row{gap:7px;}\n'
   /* --------------------------------------------------------------------------- */
   + '.port{border:1px solid #333;border-radius:8px;padding:6px 3px 4px;text-align:center;grid-column:auto!important;width:auto!important}\n'
   + '.port .num{font-size:12px;font-weight:600}\n'
@@ -2140,7 +2328,7 @@ function openPrintSheet(includeTable){
   + 'table{width:100%;border-collapse:collapse;margin-top:16px}\n'
   + 'th,td{border:1px solid var(--line);padding:6px 8px;font-size:12px;text-align:left}\n'
   + 'th{background:#f6f7f9;font-weight:700}\n'
-  + 'th:last-child, td:last-child{display:none}\n'
+  + 'th:last-child, td:last-child{display:none}.connection-details button{border:0;background:transparent;padding:0;color:#111;font:inherit}.network-summary span{display:inline-block;margin:3px}.network-print{break-before:page}.network-print p{font-size:12px}\n'
   + '@media print{.controls{display:none};}\n';
 
 
@@ -2148,13 +2336,14 @@ function openPrintSheet(includeTable){
   + '<!doctype html><html><head><meta charset="utf-8">'
   + '<title>Ethernet Cable Connection Manager – Print</title><style>' + css + '</style></head><body>'
   + '<div class="page">'
-  + '<header><h1>Profile: ' + store.current + '</h1><div class="meta">' + 'Ethernet Cable Connection Manager: <a href="https://https://github.com/bijomaru78/eccm" target="_blank">https://github.com/bijomaru78/eccm</a> - Printed on '+when+'</div></header>' 
+  + '<header><h1>Profile: ' + escapeXml(store.current) + '</h1><div class="meta">' + 'Ethernet Cable Connection Manager: <a href="https://github.com/lludlow/eccm" target="_blank">https://github.com/lludlow/eccm</a> - Printed on '+when+'</div></header>'
   + '<section id="printDevices" class="dev-rows">' + devicesHTML + '</section>'
+  + networkPrintDetails()
   + (tableHTML ? '<div class="page"><h2 style="font-size:16px;margin:18px 0 8px">Connections</h2>' + tableHTML + '</div>' : '')
   + '<div class="controls" style="margin-top:12px"><button onclick="window.print()">Print</button></div>'
   + '</div>'
   + '<script>(function(){'
-  + '  var GAP_FULL=9, GAP_HALF=7, MIN_TRACK=40;'
+  + '  var GAP_FULL=9, GAP_HALF=7;'
   + '  function sizeRows(){'
   + '    var rows=document.querySelectorAll(".port-row,[data-port-row]");'
   + '    for(var i=0;i<rows.length;i++){'
@@ -2165,16 +2354,10 @@ function openPrintSheet(includeTable){
   + '      row.style.alignContent = "start";'
   + '      row.style.gridAutoFlow = "row";'
   + '      var isFull = wrap && wrap.classList.contains("full");'
-  + '      var cols   = isFull ? 12 : 6;'
+  + '      var cols = Number(row.dataset.columns) || (isFull ? 12 : 6);'
   + '      var gap    = isFull ? GAP_FULL : GAP_HALF;'
-  + '      var inner = row.getBoundingClientRect().width;'
-  + '      if(inner && inner > 0){'
-  + '        var track = Math.floor((inner - gap * (cols - 1)) / cols);'
-  + '        if (!(track > 0)) track = 60;'
-  + '        if (track < MIN_TRACK) track = MIN_TRACK;'
-  + '		 track += -3;'
-  + '        row.style.gridTemplateColumns = "repeat(" + cols + ", " + track + "px)";'
-  + '      }'
+  + '      row.style.gridTemplateColumns = "repeat(" + cols + ", minmax(0,1fr))";'
+  + '      if (cols > 12) gap = 3;'
   + '      row.style.gap = gap + "px";'
   + '    }'
   + '  }'
@@ -2190,6 +2373,7 @@ function openPrintSheet(includeTable){
   + '</body></html>';
 
   var win = window.open('', '_blank');
+  if (!win) {alert('Allow popups to open the print layout.'); return;}
   win.document.open();
   win.document.write(html);
   win.document.close();
@@ -2237,7 +2421,9 @@ function buildLinkLabel(L) {
   let parts = [`${a} ⇄ ${b}`];
 
   if (speed) parts.push(speed);
-  if (vlan) parts.push(`VLAN ${vlan}`);
+  parts.push(vlanSummary(L.a) + ' ⇄ ' + vlanSummary(L.b));
+  if (cableSummary(L)) parts.push(cableSummary(L));
+  if (bondSummary(L.a) || bondSummary(L.b)) parts.push([bondSummary(L.a), bondSummary(L.b)].filter(Boolean).join(' ⇄ '));
 
   return parts.join(" | ");
 }
@@ -2273,6 +2459,10 @@ function buildDeviceLabel(d) {
   }
 
   // 1. escape each line individually
+  (d.portGroups || []).forEach(g => lines.push(g.name + ': ports ' + compactNumbers(g.ports) + ' / ' + (g.connector || 'unspecified') + ' / ' + (g.maxSpeed || 'unspecified')));
+  (d.bonds || []).forEach(b => lines.push(b.name + ' (' + b.mode + '): ' + compactNumbers(b.ports)));
+  const priority = parseStpPriority(d);
+  if (priority != null) lines.push('STP ' + priority + (priority === lowestStpPriority() ? ' · Root candidate' : ''));
   const safeLines = lines.map(l => escapeXml(l));
 
   // 2. THEN join with &#xa; (DO NOT escape after this)
@@ -2382,7 +2572,7 @@ function exportDrawIO() {
 }
 
 /* ===================== ORCHESTRATION ===================== */
-function render(){ renderDevices(); applyPeerScrolling(); renderConnections(); }
+function render(){ refreshTemplates(); renderDevices(); applyPeerScrolling(); renderConnections(); }
 
 /* ===================== PALETTE ===================== */
 (function(){
@@ -2626,10 +2816,17 @@ const customHTML = `
     const name=document.getElementById('devName').value.trim();
     const ports=Math.max(1,Math.min(9999,Number(document.getElementById('devPorts').value)||1));
     if(!name){alert('Please enter a device name.');return;}
+    if ($('#deviceTemplate').value) {
+      try { createDeviceFromTemplate($('#deviceTemplate').value, name); }
+      catch (err) { alert(err.message); return; }
+      $('#devName').value=''; saveStore(); render(); return;
+    }
     state.devices.push({
       id:uid(),name,ports,color:chosenColor,
       forceFullRow:false,midWrapMode:'balanced',smallWrap:false,dualLink:false,
-      numbering:'row'
+      numbering:'row',
+      portsPerRow:0,
+      stpPriority:null
     });
     document.getElementById('devName').value='';
     saveStore();render();
@@ -2652,9 +2849,11 @@ function openLayoutModal(deviceId){
   var rowMid = $('#optMidWrap');
   var rowSmall = $('#optSmallWrap');
   var selNumbering = $('#layoutNumbering');
+  var inpPerRow = $('#layoutPortsPerRow');
 
 
   nameEl.textContent = d.name + ' ('+d.ports+' ports)';
+  inpPerRow.value = (d.portsPerRow > 0) ? d.portsPerRow : '';
   selFull.value = (d.widthMode === 'full') ? 'full'
               : (d.widthMode === 'half') ? 'half'
               : 'auto';
@@ -2668,6 +2867,10 @@ function openLayoutModal(deviceId){
 
   $('#layoutCancel').onclick = function(){ backdrop.style.display='none'; };
   $('#layoutSave').onclick = function(){
+    if (d.dualLink !== (selDual.value === 'on') && hasEndpointData(d)) {
+      alert('Remove this device’s connections, port settings and bonds before changing dual-link mode.'); return;
+    }
+
 		if (selFull.value === 'full') {
 		  d.widthMode = 'full';
 		  d.forceFullRow = true;
@@ -2682,6 +2885,8 @@ function openLayoutModal(deviceId){
     if (d.ports>=7  && d.ports<=12) d.smallWrap   = (selSmall.value === 'split');
     d.dualLink = (selDual.value === 'on');
 	d.numbering = (selNumbering.value === 'column' || selNumbering.value === 'column-bt') ? selNumbering.value : 'row';
+    var perRowVal = parseInt(inpPerRow.value, 10);
+    d.portsPerRow = (perRowVal > 0) ? Math.min(128, perRowVal) : 0;
     saveStore(); backdrop.style.display='none'; render();
   };
   /* --- allow Escape key & outside click to close Layout modal --- */
@@ -2723,6 +2928,8 @@ function openEditDeviceModal(deviceId) {
 
   nameInput.value = d.name || '';
   portsInput.value = d.ports || 1;
+  var stpSel = document.getElementById('editDevStp');
+  if (stpSel) stpSel.value = (d.stpPriority == null || d.stpPriority === '') ? '' : String(d.stpPriority);
   editChosenColor = d.color || '#888';
   preview.style.background = editChosenColor;
 	const speedOptions = [
@@ -2815,9 +3022,11 @@ document.getElementById('editDevSave').addEventListener('click', function() {
     changePorts(currentEditDevice, ports);
   }
   currentEditDevice.color = editChosenColor;
+  var stpSelSave = document.getElementById('editDevStp');
+  currentEditDevice.stpPriority = (stpSelSave && stpSelSave.value !== '') ? Number(stpSelSave.value) : null;
   const speedSel = document.getElementById('editDevMaxSpeed');
   currentEditDevice.maxSpeed = speedSel ? speedSel.value || null : null;
-  recalcLinkSpeedsForDevice(currentEditDevice.id);
+  // Capability changes do not overwrite documented port speeds.
   saveStore(); render();
   closeEditDeviceModal();
 });
@@ -2958,6 +3167,8 @@ document.getElementById('importProfileFile').addEventListener('change', function
           reservedPorts: parsed.reservedPorts,
           portSpeeds: parsed.portSpeeds,
           portVlans: parsed.portVlans,
+          portVlanConfigs: parsed.portVlanConfigs,
+          deviceTemplates: parsed.deviceTemplates,
           portLinkedToNames: parsed.portLinkedToNames
         };
       }
@@ -2988,7 +3199,9 @@ document.getElementById('importProfileFile').addEventListener('change', function
         out.midWrapMode  = (d.midWrapMode === 'twelve') ? 'twelve' : 'balanced';
         out.smallWrap    = !!d.smallWrap;
         out.dualLink     = !!d.dualLink;
-        out.numbering    = (d.numbering === 'column') ? 'column' : 'row';
+        out.numbering    = (d.numbering === 'column' || d.numbering === 'column-bt') ? d.numbering : 'row';
+        out.portsPerRow  = Math.max(0, Math.min(128, Math.floor(Number(d.portsPerRow)) || 0));
+        out.stpPriority  = (d.stpPriority === '' || d.stpPriority == null) ? null : Number(d.stpPriority);
 
         // Per-device fields
         out.maxSpeed = (d.maxSpeed == null || d.maxSpeed === '') ? null : String(d.maxSpeed);
@@ -3003,6 +3216,7 @@ document.getElementById('importProfileFile').addEventListener('change', function
 
       incomingState.links = (incomingState.links || []).map(function(L){
         return {
+          cable: normalizeCable(L.cable),
           id: L.id || uid(),
           a: {
             deviceId: String(L.a && L.a.deviceId),
@@ -3029,6 +3243,8 @@ document.getElementById('importProfileFile').addEventListener('change', function
       incomingState.portSpeeds = incomingState.portSpeeds || {};
       incomingState.portVlans  = incomingState.portVlans  || {};
       incomingState.portLinkedToNames = incomingState.portLinkedToNames || {};
+
+      normalizeNetworkMetadata(incomingState);
 
       // ---------- 3) Save under user-chosen profile name ----------
       var suggested =
@@ -3300,7 +3516,7 @@ if (enablePortRenameEl) {
   const devPorts = document.getElementById('devPorts');
   if (!addBtn || !devPorts) return;
 
-  devPorts.addEventListener('input', () => {
+  devPorts.addEventListener('change', () => {
     const maxPorts = getMaxPortsSetting();
     let v = Math.max(1, Number(devPorts.value) || 1);
     if (v > maxPorts) v = maxPorts;
@@ -3323,6 +3539,13 @@ changePorts = function (d, newCount) {
   const maxPorts = getMaxPortsSetting();
   const clamped = Math.max(1, Math.min(maxPorts, Number(newCount) || 1));
   return __orig_changePorts(d, clamped);
+};
+
+$('#printCableLabels').onclick=printCableLabels;
+$('#deleteTemplate').onclick=function(){
+  var id=$('#deviceTemplate').value;
+  if (!id || !confirm('Delete this template? Existing devices will not change.')) return;
+  state.deviceTemplates=state.deviceTemplates.filter(function(t){return t.id!==id;}); saveStore(); render();
 };
 
 /* ===================== INIT ===================== */
