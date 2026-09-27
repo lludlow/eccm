@@ -36,6 +36,18 @@
   openGroupEditor(d,true);button('Add bond');fill('Group name','bond0');fill('Member ports','7-8');fill('Bond mode','lacp');save();
   assert(bondSummary({deviceId:d.id,port:7})==='bond0 (LACP)','Bond membership saved and summarized');
   connectPorts({deviceId:d.id,port:7,sub:null},{deviceId:peer.id,port:7,sub:null});
+  const portNode=p=>document.querySelector('.port[data-device-id="'+d.id+'"][data-port="'+p+'"]');
+  assert(portNode(7).querySelector('.port-bond-badge').textContent==='B1' && portNode(8).querySelector('.port-bond-badge').textContent==='B1' && !portNode(1).querySelector('.port-bond-badge'),'Linked and free bond members carry badges; nonmembers do not');
+  let endpointCells=document.querySelectorAll('.conn-row .connection-port');
+  assert(endpointCells[0].textContent.includes('bond0 (LACP)') && endpointCells[1].textContent.includes('No bond recorded'),'Connection table identifies one-sided bond configuration');
+  openGroupEditor(peer,true);button('Add bond');fill('Group name','peer-uplink');fill('Member ports','7-8');fill('Bond mode','static');save();
+  endpointCells=document.querySelectorAll('.conn-row .connection-port');
+  assert(endpointCells[0].textContent.includes('bond0 (LACP)') && endpointCells[1].textContent.includes('peer-uplink (Static)'),'Each connection endpoint shows its own bond name and mode');
+  openGroupEditor(d,true);button('Add bond');const secondBond=document.querySelectorAll('#networkDialog fieldset')[1];
+  fill('Group name','backup',secondBond);fill('Member ports','3-4',secondBond);fill('Bond mode','static',secondBond);save();
+  state.reservedPorts[keyFor(d.id,4,null)]='External member';render();
+  assert(portNode(3).querySelector('.port-bond-badge').textContent==='B2' && portNode(3).getAttribute('aria-label').includes('backup (Static)'),'Multiple bonds have distinct visible and accessible markers');
+  assert(document.querySelector('.reserved-row .connection-port').textContent.includes('B2 · backup (Static)'),'Reserved connections show bond membership');
   const link=state.links[0];openCableEditor(link);fill('Cable ID','CBL-001');fill('Medium','DAC');fill('Length (metres)','2.5');fill('Cable color','Black');fill('Notes','Uplink cable');save();
   assert(link.cable.id==='CBL-001' && cableSummary(link).includes('2.5 m'),'Cable editor saves metadata');
   $('#searchBox').value='CBL-001';renderConnections();assert($('#connBody').textContent.includes('CBL-001'),'Cable IDs are searchable');
@@ -56,6 +68,7 @@
   $('#printSheet').click();window.open=originalOpen;
   const printDoc=new DOMParser().parseFromString(printHTML,'text/html');
   printDoc.querySelectorAll('script').forEach(script=>new Function(script.textContent));
+  assert(printDoc.querySelector('.port-bond-badge') && printDoc.querySelector('.connection-bond-badge').textContent.includes('LACP'),'Print retains faceplate and connection bond badges');
   assert(printDoc.querySelector('.port-row[data-columns="4"]') && printDoc.body.textContent.includes('CBL-001'),'Print layout preserves custom row counts and cable schedule');
   const snapshot=deepClone(state);
   // Capture actual export handlers, then feed their files through the real FileReader import handlers.

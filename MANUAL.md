@@ -160,6 +160,12 @@ mode, and at least two member ports. Each port can belong to only one bond on it
 device. Configure the peer's bond separately. Bonds are documentation only and
 are unavailable on dual-link patch panels.
 
+Member ports display compact **B1**, **B2**, etc. badges. These are display keys
+within each device, matched to full bond names and LACP/static modes in its
+summary. The Connections table shows the matching badge beside each endpoint’s
+port, including reserved ports; an unconfigured endpoint says **No bond
+recorded**. Badges also appear in the printed layout.
+
 Removing a port also removes its membership. A bond left with only one member
 shows **Needs another member**, so incomplete documentation remains visible.
 
