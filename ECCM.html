@@ -242,7 +242,14 @@ html.theme-bright .speed-menu select{  background:#fff;  color:#111;  border-col
 .cassette-enclosure{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px}
 .cassette-slot{min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
 .cassette-position{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.cassette-slot h4{font-size:13px;margin:6px 0;overflow-wrap:anywhere}
+.cassette-slot h4{font-size:13px;margin:6px 0;overflow-wrap:anywhere;display:flex;align-items:center;gap:6px}
+.cassette-slot h4 .swatch{flex-shrink:0}
+.cassette-customization{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:12px}
+.cassette-color-field{display:grid;grid-template-columns:42px 1fr;gap:6px;align-content:start}
+.cassette-color-field label{grid-column:1/-1;margin-bottom:0}
+.cassette-color-field input[type=color]{width:42px;height:34px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.cassette-color-field button{padding:5px}
+.cassette-color-field button:disabled{opacity:.5;cursor:default}
 .cassette-caption{font-size:10px;color:var(--muted);margin-bottom:10px}
 .cassette-slot.empty{border-style:dashed;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:120px}
 .cassette-slot.empty p{font-size:12px}
@@ -917,6 +924,10 @@ function defaultCassetteLayout(d, rows) {
 function cassetteName(layout, c) {
   return String((layout.labels || {})[c] || '').trim();
 }
+function cassetteColor(layout, c) {
+  var color=(layout.colors || {})[c];
+  return typeof color==='string' && /^#[0-9a-f]{6}$/i.test(color) ? color : '';
+}
 function cassetteRowPorts(c, top) {
   var start=(c-1)*12+(top?7:1);
   return Array.from({length:6},function(_,i){return start+i;});
@@ -942,7 +953,12 @@ function renderCassetteEnclosure(d, renderCell) {
     } else {
       var label=cassetteName(layout,c);
       slot.dataset.cassette=c;
-      slot.appendChild(el('h4',{},'C'+c+(label?' · '+label:'')));
+      var color=cassetteColor(layout,c), heading=el('h4',{},'C'+c+(label?' · '+label:''));
+      if(color){
+        slot.style.borderColor=color;slot.style.borderTopWidth='4px';
+        heading.prepend(el('span',{class:'swatch',style:'background:'+color,title:'Cassette color '+color}));
+      }
+      slot.appendChild(heading);
       slot.appendChild(el('div',{class:'cassette-caption'},'12 LC duplex · fibers 1–24'));
       [true,false].forEach(function(top){
         var row=el('div',{class:'port-row cassette-port-row',dataset:{columns:6}});
@@ -961,7 +977,9 @@ function resizedCassetteLayout(d, newCount) {
   if (!Number.isInteger(count) || count<1 || count>layout.rows*4) throw new Error('FHD enclosures require a multiple of 12 ports, up to '+(layout.rows*48)+'.');
   layout.slots=layout.slots.map(function(c){return c!==null && c<=count?c:null;});
   for(var c=1;c<=count;c++) if(!layout.slots.includes(c)) layout.slots[layout.slots.indexOf(null)]=c;
-  Object.keys(layout.labels || {}).forEach(function(k){if(Number(k)>count)delete layout.labels[k];});
+  ['labels','colors'].forEach(function(field){
+    Object.keys(layout[field] || {}).forEach(function(k){if(Number(k)>count)delete layout[field][k];});
+  });
   return validateCassetteLayout({ports:newCount},layout);
 }
 function planDualLinkMigration(d, enabled) {
@@ -2971,12 +2989,21 @@ function openLayoutModal(deviceId){
     var count=Math.ceil(d.ports/12), choices=[['','Empty slot']];
     for(var c=1;c<=Math.min(count,8);c++)choices.push([String(c),'C'+c+' · ports '+((c-1)*12+1)+'–'+(c*12)]);
     for(var i=0;i<draft.rows*4;i++) slotInputs.push(selectField(slotHost,(draft.rows===1?'Row 1':i<4?'Top':'Bottom')+' slot '+(i%4+1),choices,draft.slots[i]==null?'':String(draft.slots[i])));
-    namesHost.appendChild(el('p',{class:'small muted'},'Optional cassette labels, such as “To Rack11”.'));
-    for(var c=1;c<=Math.min(count,8);c++) nameInputs.push(textField(namesHost,'C'+c+' label',cassetteName(draft,c),'Destination or purpose'));
+    namesHost.appendChild(el('p',{class:'small muted'},'Optional labels and colors follow each cassette when moved. Use them to distinguish destinations or A/B fabrics.'));
+    for(let c=1;c<=Math.min(count,8);c++){
+      var row=el('div',{class:'cassette-customization'});namesHost.appendChild(row);
+      nameInputs.push(textField(row,'C'+c+' label',cassetteName(draft,c),'Destination or purpose'));
+      const color=field(row,'C'+c+' color',el('input',{type:'color',value:cassetteColor(draft,c) || '#808080'}));
+      const reset=el('button',{type:'button','aria-label':'Reset C'+c+' color to default'},'Default');
+      reset.disabled=!cassetteColor(draft,c);
+      color.parentElement.classList.add('cassette-color-field');color.parentElement.appendChild(reset);
+      color.oninput=color.onchange=function(){draft.colors=draft.colors || {};draft.colors[c]=color.value;reset.disabled=false;};
+      reset.onclick=function(){if(draft.colors)delete draft.colors[c];color.value='#808080';reset.disabled=true;};
+    }
   }
   size.onchange=function(){
-    capture();var labels=draft.labels;
-    draft=defaultCassetteLayout(d,Number(size.value));draft.labels=labels;populate();
+    capture();var labels=draft.labels,colors=draft.colors;
+    draft=defaultCassetteLayout(d,Number(size.value));draft.labels=labels;if(colors)draft.colors=colors;populate();
   };
   function update(){
     var fhd=kind.value==='fhd';standard.hidden=fhd;standard.disabled=fhd;enclosure.hidden=!fhd;enclosure.disabled=!fhd;

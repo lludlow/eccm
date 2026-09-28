@@ -69,7 +69,7 @@
   const remoteFiber=state.devices[state.devices.length-1];
   connectPorts({deviceId:fiber.id,port:13,sub:null},{deviceId:remoteFiber.id,port:1,sub:null});
   state.portAliases[keyFor(fiber.id,13,null)]='Server uplink';
-  openLayoutModal(fiber.id);fill('Layout style','fhd');fill('Enclosure size','2');fill('Port sides','on');fill('C1 label','To Rack11');fill('C2 label','To Rack11');fill('C3 label','To Rack12');fill('C5 label','To Rack13');save();
+  openLayoutModal(fiber.id);fill('Layout style','fhd');fill('Enclosure size','2');fill('Port sides','on');fill('C1 label','To Rack11');fill('C2 label','To Rack11');fill('C3 label','To Rack12');fill('C5 label','To Rack13');fill('C1 color','#2563eb');fill('C2 color','#f97316');save();
   const fiberLink=state.links[state.links.length-1];
   assert(fiber.dualLink && fiberLink.a.port===13 && fiberLink.a.sub===0 && state.portAliases[keyFor(fiber.id,13,0)]==='Server uplink','Layout enables dual link without unlinking existing circuits or losing aliases');
   let fiberCard=document.getElementById('dev-'+fiber.id);
@@ -80,6 +80,15 @@
   const preservedLinks=deepClone(state.links);
   openLayoutModal(fiber.id);fill('Top slot 1','3');fill('Top slot 2','1');save();
   assert(fiber.cassetteLayout.slots[0]===3 && fiber.cassetteLayout.slots[1]===1 && same(state.links,preservedLinks),'Moving cassette slots preserves connection identities');
+  let movedCassette=document.getElementById('dev-'+fiber.id).querySelector('[data-cassette="1"]');
+  assert(movedCassette.dataset.slot==='2' && movedCassette.style.borderColor==='rgb(37, 99, 235)' && fiber.cassetteLayout.colors[2]==='#f97316','Cassette colors follow identity when slots move');
+  openLayoutModal(fiber.id);fill('C1 color','#ffffff');close();
+  assert(fiber.cassetteLayout.colors[1]==='#2563eb','Cancel discards cassette color edits');
+  openLayoutModal(fiber.id);document.querySelector('[aria-label="Reset C1 color to default"]').click();save();
+  assert(!fiber.cassetteLayout.colors[1] && !document.getElementById('dev-'+fiber.id).querySelector('[data-cassette="1"]').style.borderColor,'Default clears the cassette color');
+  openLayoutModal(fiber.id);fill('C1 color','#2563eb');fill('Enclosure size','1');fill('Enclosure size','2');save();
+  assert(fiber.cassetteLayout.colors[1]==='#2563eb' && fiber.cassetteLayout.colors[2]==='#f97316','Enclosure size changes preserve cassette colors');
+  openLayoutModal(fiber.id);fill('Top slot 1','3');fill('Top slot 2','1');save();
   openLayoutModal(fiber.id);fill('Top slot 1','1');save();
   assert(document.querySelector('.form-error').textContent.includes('exactly one') && fiber.cassetteLayout.slots[0]===3,'Duplicate cassette placement rejected without mutation');close();
   openLayoutModal(fiber.id);fill('Layout style','standard');save();
@@ -106,6 +115,7 @@
   const printDoc=new DOMParser().parseFromString(printHTML,'text/html');
   printDoc.querySelectorAll('script').forEach(script=>new Function(script.textContent));
   assert(printDoc.querySelectorAll('.cassette-enclosure').length===2 && printDoc.querySelectorAll('.cassette-slot.empty').length===4 && printDoc.body.textContent.includes('C2-LC01 / Front'),'Printed layout retains cassette blocks, blank slots and physical connection labels');
+  assert(printDoc.querySelector('[data-cassette="1"]').style.borderColor==='rgb(37, 99, 235)' && printDoc.querySelector('[data-cassette="2"]').style.borderColor==='rgb(249, 115, 22)','Print retains cassette colors');
   assert(printDoc.querySelector('.port-bond-badge') && printDoc.querySelector('.connection-bond-badge').textContent.includes('LACP'),'Print retains faceplate and connection bond badges');
   assert(printDoc.querySelector('.port-row[data-columns="4"]') && printDoc.body.textContent.includes('CBL-001'),'Print layout preserves custom row counts and cable schedule');
   const snapshot=deepClone(state);

@@ -59,6 +59,10 @@ Create the device with its populated **LC duplex connection count**, then select
   as **LC07–LC12 above LC01–LC06**. The LC numbers identify duplex pairs;
   the cassette's printed fiber numbers run 1–24.
 - Assign each cassette to a slot and optionally label it by destination.
+  Choose a cassette color in **Layout** to distinguish A/B fabrics or racks.
+  The color marks its border and heading and follows the cassette when moved.
+  **Default** clears the custom color. Colors are retained in templates, JSON
+  exports and printed layouts; port colors continue to show connection status.
   Unused slots display blank panels. Moving a cassette preserves its connections.
 - Names such as **C2-LC01 / Front** identify the cassette, duplex connection and
   side in the connection table, prompts, cable labels and exports.
