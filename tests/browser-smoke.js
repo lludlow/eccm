@@ -53,7 +53,7 @@
   $('#searchBox').value='CBL-001';renderConnections();assert($('#connBody').textContent.includes('CBL-001'),'Cable IDs are searchable');
   $('#searchBox').value='bond0';renderConnections();assert($('#connBody').textContent.includes('CBL-001'),'Bond names are searchable');$('#searchBox').value='';
   assert(buildDrawIOXml().includes('CBL-001') && buildDrawIOXml().includes('Trunk'),'Draw.io includes cable and VLAN metadata');
-  assert(networkPrintDetails().includes('CBL-001') && networkPrintDetails().includes('SFP28'),'Print schedule includes cable and group metadata');
+  assert(printConnectionsHTML().includes('CBL-001') && networkPrintDetails().includes('25 Gbit'),'Print tables include cable and port configuration metadata');
   assert((cableLabelsHTML([link]).match(/<article>/g)||[]).length===2,'Two printable end labels per cable');
   d.stpPriority=4096;peer.stpPriority=4096;render();
   assert([...document.querySelectorAll('.stp-badge')].every(n=>n.textContent.includes('Root candidate')),'Tied priorities show Root candidate, not confirmed ROOT');
@@ -117,10 +117,18 @@
   const fiberTemplate=state.deviceTemplates.find(t=>t.name==='FHD 2U enclosure');
   assert(same(fiberTemplate.device.cassetteLayout,fiber.cassetteLayout),'Templates retain physical cassette layout');
   d.portsPerRow=4;d.numbering='column-bt';render();
+  const beforePrint=deepClone(state),beforePrintUI=$('#devRows').innerHTML;
+  $('#searchBox').value='CBL-001';renderConnections();
   let printHTML='';const originalOpen=window.open;
   window.open=()=>({document:{open(){},write(html){printHTML=html;},close(){}},focus(){},print(){},close(){}});
   $('#printSheet').click();window.open=originalOpen;
   const printDoc=new DOMParser().parseFromString(printHTML,'text/html');
+  assert(printDoc.querySelectorAll('.connections-table tbody tr').length===state.links.length,'Print includes all connections even when the screen table is filtered');
+  assert([...printDoc.querySelectorAll('.print-reference')].filter(n=>n.textContent.startsWith('#')).length===state.links.length*2,'Both cable endpoints retain matching connection-table references');
+  assert(!printDoc.querySelector('.port .peer') && printDoc.body.textContent.includes('Future switch') && printDoc.body.textContent.includes('Server uplink'),'Compact maps retain full aliases and reserved notes in the report tables');
+  assert(same(state,beforePrint) && $('#devRows').innerHTML===beforePrintUI,'Printing does not mutate the profile or screen faceplates');
+  assert(printDoc.querySelector('style').textContent.includes('@page{size:A4 landscape') && !printDoc.querySelector('style').textContent.includes('@page:first'),'Print uses a consistent landscape page size');
+  $('#searchBox').value='';renderConnections();
   printDoc.querySelectorAll('script').forEach(script=>new Function(script.textContent));
   assert(printDoc.querySelectorAll('.cassette-enclosure').length===2 && printDoc.querySelectorAll('.cassette-slot.empty').length===4 && printDoc.body.textContent.includes('C2-LC01 / Front'),'Printed layout retains cassette blocks, blank slots and physical connection labels');
   assert(printDoc.querySelector('[data-cassette="1"]').style.borderColor==='rgb(37, 99, 235)' && printDoc.querySelector('[data-cassette="2"]').style.borderColor==='rgb(249, 115, 22)','Print retains cassette colors');

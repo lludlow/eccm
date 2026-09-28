@@ -864,17 +864,32 @@ function refreshTemplates() {
   };
 }
 function networkPrintDetails() {
-  var html='<section class="network-print"><h2>Port configuration</h2>';
+  var tables='';
   state.devices.forEach(function(d){
-    html+='<h3>'+escapeXml(d.name)+'</h3>'+deviceNetworkSummary(d).outerHTML;
-    for (var p=1;p<=d.ports;p++) (d.dualLink?[0,1]:[null]).forEach(function(sub){
-      var ep={deviceId:d.id,port:p,sub:sub}, speed=speedFor(d.id,p,sub);
-      if (speed || vlanConfig(ep).mode || bondFor(ep)) html+='<p>'+escapeXml(portNameFor(d,p,sub)+' · '+[speed,vlanSummary(ep),bondSummary(ep)].filter(Boolean).join(' · '))+'</p>';
+    var groups=new Map(), layout=cassetteLayoutFor(d);
+    for(var p=1;p<=d.ports;p++) (d.dualLink?[0,1]:[null]).forEach(function(sub){
+      var ep={deviceId:d.id,port:p,sub:sub}, key=keyFor(d.id,p,sub);
+      var speed=speedFor(d.id,p,sub), vlan=vlanConfig(ep).mode?vlanSummary(ep):'', bond=bondSummary(ep);
+      var notes=[(d.portNames || {})[key] && 'Name: '+d.portNames[key],
+        aliasFor(d.id,p,sub) && 'Alias: '+aliasFor(d.id,p,sub),
+        state.reservedPorts[key] && 'Reserved: '+state.reservedPorts[key],
+        state.portLinkedToNames[key] && 'Peer label: '+state.portLinkedToNames[key]].filter(Boolean).join(' · ');
+      if(!speed && !vlan && !bond && !notes)return;
+      var cassette=layout?Math.floor((p-1)/12)+1:null;
+      var values=[sub,cassette,speed || '',vlan,bond,notes], groupKey=JSON.stringify(values);
+      if(!groups.has(groupKey))groups.set(groupKey,{values:values,ports:[]});
+      groups.get(groupKey).ports.push(layout?(p-1)%12+1:p);
     });
+    if(!groups.size)return;
+    var rows='';
+    groups.forEach(function(group){
+      var v=group.values, label=(v[1]?'C'+v[1]+' · LC ':'Ports ')+compactNumbers(group.ports);
+      if(v[0]!=null)label+=layout?(v[0]===0?' / Front':' / Rear'):' / side '+(v[0]+1);
+      rows+='<tr>'+[label,v[2],v[3],v[4],v[5]].map(function(value){return '<td>'+escapeXml(value || '—')+'</td>';}).join('')+'</tr>';
+    });
+    tables+='<table class="configuration-table"><colgroup><col style="width:25%"><col style="width:12%"><col style="width:24%"><col style="width:16%"><col style="width:23%"></colgroup><thead><tr><th colspan="5" class="table-title">'+escapeXml(d.name)+'</th></tr><tr><th>Ports</th><th>Speed</th><th>VLAN configuration</th><th>Bond</th><th>Names / notes</th></tr></thead><tbody>'+rows+'</tbody></table>';
   });
-  html+='<h2>Cable schedule</h2>';
-  state.links.forEach(function(l){html+='<p>'+escapeXml(endpointLabel(l.a)+' ⇄ '+endpointLabel(l.b)+' · '+(cableSummary(l)||'Cable details unspecified'))+'</p>';});
-  return html+'</section>';
+  return tables?'<section class="report-section network-print"><h2>Port configuration</h2><p class="legend">Ports with identical recorded settings are grouped. — = not recorded. Speeds are documented values, not live measurements.</p>'+tables+'</section>':'';
 }
 function cableLabelsHTML(links) {
   var labels='';
@@ -2386,122 +2401,96 @@ function openSpeedMenu(e, deviceId, port, sub){
 }
 
 /* ===================== PRINT ===================== */
+function printConnectionsHTML() {
+  function endpoint(ep) {
+    var d=deviceById(ep.deviceId), alias=aliasFor(ep.deviceId,ep.port,ep.sub), badge=bondBadge(ep,false);
+    return '<strong>'+escapeXml(d?d.name:'Unknown device')+'</strong><span> — '+escapeXml(portNameFor(d,ep.port,ep.sub))+'</span>'+
+      (alias?'<div class="endpoint-note">'+escapeXml(alias)+'</div>':'')+(badge?badge.outerHTML:'');
+  }
+  var rows=state.links.map(function(link,i){
+    return '<tr data-link-id="'+escapeXml(link.id)+'"><td class="link-number">'+(i+1)+'</td><td>'+endpoint(link.a)+'</td><td>'+endpoint(link.b)+'</td><td>'+escapeXml(cableSummary(link) || '—')+'</td></tr>';
+  }).join('');
+  return '<section class="report-section"><h2>Connections</h2><p class="legend">'+state.links.length+' links. Numbers match the # references on the port maps. All profile connections are included. — = no cable details recorded. Only recorded bonds are shown.</p><table class="connections-table"><colgroup><col style="width:5%"><col style="width:37%"><col style="width:37%"><col style="width:21%"></colgroup><thead><tr><th>#</th><th>Endpoint A</th><th>Endpoint B</th><th>Cable details</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+}
+function buildPrintHTML(includeTable) {
+  // Clone the faceplates, but replace scrolling UI text with stable link references.
+  // Full names, aliases, bonds and cable details are printed in the tables below.
+  var devices=document.createElement('section');devices.id='printDevices';
+  var linkNumbers=new Map();
+  state.links.forEach(function(link,i){[link.a,link.b].forEach(function(ep){linkNumbers.set(keyFor(ep.deviceId,ep.port,ep.sub),i+1);});});
+  state.devices.forEach(function(d){
+    var original=document.getElementById('dev-'+d.id);if(!original)return;
+    var card=original.cloneNode(true);
+    card.querySelectorAll('.device-actions,.inline-controls').forEach(function(node){node.remove();});
+    card.querySelectorAll('.port').forEach(function(port){
+      var p=Number(port.dataset.port), sub=d.dualLink?Number(port.dataset.sub):null;
+      var ep={deviceId:d.id,port:p,sub:sub}, key=keyFor(d.id,p,sub), number=linkNumbers.get(key);
+      var label=cassetteLayoutFor(d)?'LC'+String((p-1)%12+1).padStart(2,'0')+(sub==null?'':sub===0?' F':' R'):String(p)+(sub==null?'':'/'+(sub+1));
+      var reference=state.reservedPorts[key]?'Reserved':number?(includeTable?'#'+number:'Linked'):'Free';
+      port.classList.remove('selected');port.style.boxShadow='none';
+      port.replaceChildren(el('div',{class:'num'},label),el('div',{class:'print-reference'},reference));
+      var badge=bondBadge(ep,true);if(badge)port.appendChild(badge);
+      port.removeAttribute('tabindex');port.removeAttribute('role');
+      if(!number && !state.reservedPorts[key]){port.style.background='';port.style.color='';}
+    });
+    card.querySelectorAll('.port-row').forEach(function(row){
+      var cols=Number(row.dataset.columns) || row.children.length;
+      row.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+    });
+    card.querySelectorAll('[draggable]').forEach(function(node){node.removeAttribute('draggable');});
+    devices.appendChild(card);
+  });
+  var css=`
+    @page{size:A4 landscape;margin:12mm 10mm;@bottom-right{content:"Page " counter(page) " / " counter(pages);font:8pt Arial;color:#667085}}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    :root{--line:#ccd2da;--reserved-bg:#555}
+    body{margin:0;background:#fff;color:#182230;font:9pt/1.35 Arial,Helvetica,sans-serif}
+    main{max-width:277mm;margin:0 auto}
+    .report-header{border-bottom:2px solid #344054;padding-bottom:4mm;margin-bottom:4mm}
+    h1{font-size:18pt;margin:0 0 1mm}h2{font-size:14pt;margin:0 0 2mm;break-after:avoid}
+    .report-meta,.legend{font-size:8pt;color:#475467;margin:1mm 0 4mm}
+    .device{border:1px solid #ccd2da!important;border-radius:3mm;padding:3mm;margin:0 0 4mm;break-inside:avoid;overflow:visible;background:white}
+    .device-head{margin-bottom:1mm}.device-title{display:flex;align-items:center;gap:2mm;font-size:11pt;font-weight:700}
+    .swatch{display:inline-block;width:3mm;height:3mm;border:1px solid #0003;border-radius:.6mm;flex-shrink:0}
+    .meta,.network-summary,.cassette-layout>p{font-size:7.5pt;color:#475467;margin:1mm 0 2mm}
+    .network-summary span{display:inline-block;margin-right:3mm}
+    .stp-badge{font-size:7pt;font-weight:400;border:1px solid #b0b8c3;border-radius:2mm;padding:.5mm 1.5mm}
+    .stp-badge.root{background:#fff0c2;color:#684d00}
+    .ports-rows{display:grid;gap:1.5mm}.port-row{display:grid;gap:1mm;break-inside:avoid}
+    .port{height:9mm!important;min-width:0;border:1px solid #a4abb6;border-radius:1mm!important;padding:1mm .2mm;text-align:center;overflow:visible}
+    .port .num{font-size:7pt;font-weight:700;white-space:nowrap;line-height:1.25}
+    .print-reference{font-size:6.5pt;line-height:1.25;margin-top:.5mm;white-space:nowrap}
+    .port:not(.connected):not(.reserved){background:#fff!important;color:#475467!important}
+    .port.reserved{background:#555!important;color:#fff!important}
+    .port-bond-badge{display:inline-block;font-size:5.5pt;line-height:1;margin-top:.4mm}
+    .dual-cell{display:flex;flex-direction:column;min-width:0;border-radius:1mm!important;overflow:visible!important}
+    .dual-cell .port{flex:none;height:9mm!important;border-radius:0!important}
+    .cassette-enclosure{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2mm}
+    .cassette-slot{border:1px solid #b0b8c3;border-radius:1.5mm;padding:2mm;min-width:0;break-inside:avoid}
+    .cassette-slot.empty{border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#667085}
+    .cassette-position,.cassette-caption{font-size:6.5pt;color:#475467}
+    .cassette-slot h4{display:flex;align-items:center;gap:1mm;font-size:8pt;margin:1mm 0;overflow-wrap:anywhere}
+    .cassette-slot.empty p{font-size:7pt}.cassette-port-row{gap:.6mm;margin-top:1mm}
+    .cassette-slot .port .num{font-size:6pt}
+    .report-section{break-before:page}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:5mm;font-size:8.5pt}
+    thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #d0d5dd;padding:1.2mm 2mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+    th{background:#edf1f5;font-size:8pt;font-weight:700}.table-title{background:#344054;color:white;font-size:10pt}
+    tbody tr:nth-child(even){background:#f8fafc}.link-number{font-weight:700;color:#475467}
+    .endpoint-note{color:#475467;font-size:8pt}.connection-bond-badge{display:inline-block;font-size:7pt;border:1px solid #b8cbe1;border-radius:1mm;padding:.2mm 1mm;margin-top:.6mm;background:#edf4fc;color:#244363}
+    .controls{position:sticky;top:0;background:#fff;padding:3mm;text-align:right;border-bottom:1px solid #ccd2da}
+    .controls button{padding:2mm 4mm;font:inherit;cursor:pointer}
+    @media screen{body{background:#e9edf2}main{background:white;padding:10mm;box-sizing:content-box}.report-section{margin-top:10mm}}
+    @media print{.controls{display:none}}
+  `;
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'+escapeXml(store.current)+' - ECCM print layout</title><style>'+css+'</style></head><body><div class="controls"><button onclick="window.print()">Print / Save PDF</button></div><main><header class="report-header"><h1>'+escapeXml(store.current)+'</h1><div class="report-meta">Network cabling · '+state.devices.length+' devices · '+state.links.length+' connections · '+escapeXml(new Date().toLocaleString())+'</div></header><h2>Port maps</h2><p class="legend">Each tile shows its port number and '+(includeTable?'# connection-table reference':'connection status')+'. Free = unconnected; Reserved = external connection. F/R = front/rear; 1/2 = dual-link sides. Full names, aliases and settings follow in the tables.</p>'+devices.outerHTML+(includeTable?printConnectionsHTML():'')+networkPrintDetails()+'</main></body></html>';
+}
 function openPrintSheet(includeTable){
-  var devicesHTML = document.getElementById('devRows').innerHTML;
-  var tableEl = document.getElementById('connTable');
-  var tableHTML = (includeTable && tableEl) ? tableEl.outerHTML : '';
-  var when = new Date().toLocaleString();
-
-  var css = ''
-+ '@page{size:A4 portrait;margin:12mm}\n'
-+ '@page:first{size:A4 landscape;margin:12mm}\n'
-+ '*{box-sizing:border-box}\n'
-+ '@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}\n'
-+ '.device,.port,.dual-cell,.swatch,header{ -webkit-print-color-adjust:exact; print-color-adjust:exact }\n'
-+ '.page{break-inside:avoid;page-break-inside:avoid}\n'
-+ '.page + .page{break-before:page;page-break-before:always}\n'
-+ ':root{--ink:#111;--line:#ddd;--prtPortH:75px;--prtGap:0px}\n'
-+ '.port{height:var(--prtPortH)!important;box-sizing:border-box;overflow:hidden;display:block}\n'
-+ '.dual-cell{display:flex;flex-direction:column;gap:var(--prtGap);height:calc(var(--prtPortH)*2 + var(--prtGap))!important;box-sizing:border-box;overflow:hidden}\n'
-+ '.dual-cell .port{height:var(--prtPortH)!important;border:0!important;border-radius:0!important}\n'
-+ '.dual-cell .port:first-child{border-bottom:1px solid #333!important}\n'
-
-  + '*{box-sizing:border-box}\n'
-  + 'body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:#fff;margin:0}\n'
-  + '.page{max-width:calc(297mm - 16mm);margin:10mm auto}\n'
-  + 'header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}\n'
-  + 'h1{font-size:18px;margin:0}\n'
-  + '.meta{font-size:12px;color:#555}\n'
-  + '.dev-rows{display:flex;flex-direction:column;gap:12px}\n'
-  + '.dev-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n'
-  + '.device-wrap{width:100%}\n'
-  + '.device-wrap.full{grid-column:1 / -1}\n'
-  + '.device{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;overflow:hidden}\n'
-  + '.device-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}\n'
-  + '.device-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}\n'
-  + '.stp-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;border:1px solid #bbb;font-size:10px;font-weight:700;color:#333;white-space:nowrap}\n'
-  + '.stp-badge.root{border-color:#b8860b;color:#6b4f00;background:#f8e7b0}\n'
-  + '.device-actions,.inline-controls{display:none!important}\n'
-  + '.swatch{width:12px;height:12px;border-radius:3px;border:1px solid #0003;display:inline-block}\n'
-  + '.ports-rows{display:flex;flex-direction:column;gap:8px;margin-top:10px;overflow:hidden}\n'
-  + '.port-row{display:grid;justify-content:start;align-content:start}\n'
-  + '.device-wrap.full .port-row{gap:10px;}\n'
-  + '.device-wrap:not(.full) .port-row{gap:7px;}\n'
-  /* --------------------------------------------------------------------------- */
-  + '.port{border:1px solid #333;border-radius:8px;padding:6px 3px 4px;text-align:center;grid-column:auto!important;width:auto!important}\n'
-  + '.has-bonds .port{height:calc(var(--prtPortH) + 18px)!important}.port{position:relative}.port-bond-badge{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);padding:0 2px;font-size:9px;line-height:14px;font-weight:700;border:1px solid #7395bc;border-radius:4px;background:#e3efff;color:#153858}.connection-bond-badge{display:inline-block;margin-top:3px;padding:2px 4px;border:1px solid #7395bc;border-radius:4px;font-size:10px;white-space:normal}.connection-port .muted{color:#555;font-size:10px}\n'
-  + '.cassette-enclosure{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.cassette-slot{border:1px solid #bbb;padding:5px;min-width:0;break-inside:avoid}.cassette-slot.empty{border-style:dashed;text-align:center;display:flex;flex-direction:column;justify-content:center}.cassette-slot h4{font-size:11px;margin:5px 0}.cassette-position,.cassette-caption,.cassette-layout>p{font-size:9px;color:#555}.cassette-port-row{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin-top:5px}.cassette-slot .port{height:66px!important;padding:3px 1px}.cassette-slot .dual-cell{height:132px!important;min-width:0}.cassette-slot .num{font-size:8px!important}.cassette-slot .alias,.cassette-slot .peer{font-size:8px!important;overflow:hidden}.cassette-slot .num-label{overflow-wrap:anywhere}\n'
-  + '.port .num{font-size:12px;font-weight:600}\n'
-  + '.port .alias{font-size:11px;margin-top:2px;min-height:1.1em}\n'
-  + '.port .peer{font-size:12px;font-weight:700;margin-top:4px;min-height:1.2em}\n'
-  + '.port:not(.connected):not(.reserved){background:#fff !important;border-color:#444 !important}\n'
-  + '.port:not(.connected):not(.reserved) .num,'
-  + '.port:not(.connected):not(.reserved) .alias,'
-  + '.port:not(.connected):not(.reserved) .peer{color:#000 !important}\n'
-  + '.port.connected{color:#000}\n'
-  + '.port.reserved{background:#555 !important;color:#fff !important;border-color:#333 !important}\n'
-  + '.dual-cell{border-color:#333 !important}\n'
-  + '.port.reserved .num,.port.reserved .alias,.port.reserved .peer{color:#fff !important}\n'
-  + 'table{width:100%;border-collapse:collapse;margin-top:16px}\n'
-  + 'th,td{border:1px solid var(--line);padding:6px 8px;font-size:12px;text-align:left}\n'
-  + 'th{background:#f6f7f9;font-weight:700}\n'
-  + 'th:last-child, td:last-child{display:none}.connection-details button{border:0;background:transparent;padding:0;color:#111;font:inherit}.network-summary span{display:inline-block;margin:3px}.network-print{break-before:page}.network-print p{font-size:12px}\n'
-  + '@media print{.controls{display:none};}\n';
-
-
-  var html = ''
-  + '<!doctype html><html><head><meta charset="utf-8">'
-  + '<title>Ethernet Cable Connection Manager – Print</title><style>' + css + '</style></head><body>'
-  + '<div class="page">'
-  + '<header><h1>Profile: ' + escapeXml(store.current) + '</h1><div class="meta">' + 'Ethernet Cable Connection Manager: <a href="https://github.com/lludlow/eccm" target="_blank">https://github.com/lludlow/eccm</a> - Printed on '+when+'</div></header>'
-  + '<section id="printDevices" class="dev-rows">' + devicesHTML + '</section>'
-  + networkPrintDetails()
-  + (tableHTML ? '<div class="page"><h2 style="font-size:16px;margin:18px 0 8px">Connections</h2>' + tableHTML + '</div>' : '')
-  + '<div class="controls" style="margin-top:12px"><button onclick="window.print()">Print</button></div>'
-  + '</div>'
-  + '<script>(function(){'
-  + '  var GAP_FULL=9, GAP_HALF=7;'
-  + '  function sizeRows(){'
-  + '    var rows=document.querySelectorAll(".port-row,[data-port-row]");'
-  + '    for(var i=0;i<rows.length;i++){'
-  + '      var row=rows[i];'
-  + '      var wrap=row.closest(".device-wrap");'
-  + '      row.style.display = "grid";'
-  + '      row.style.justifyContent = "start";'
-  + '      row.style.alignContent = "start";'
-  + '      row.style.gridAutoFlow = "row";'
-  + '      var isFull = wrap && wrap.classList.contains("full");'
-  + '      var cols = Number(row.dataset.columns) || (isFull ? 12 : 6);'
-  + '      var gap    = isFull ? GAP_FULL : GAP_HALF;'
-  + '      row.style.gridTemplateColumns = "repeat(" + cols + ", minmax(0,1fr))";'
-  + '      if (cols > 12 || row.closest(".cassette-slot")) gap = 3;'
-  + '      row.style.gap = gap + "px";'
-  + '    }'
-  + '  }'
-  + '  requestAnimationFrame(function(){ requestAnimationFrame(sizeRows); });'
-  + '  Array.prototype.forEach.call(document.querySelectorAll(".port"),function(p){'
-  + '    if(!p.classList.contains("connected") && !p.classList.contains("reserved")){'
-  + '      p.style.background=""; p.style.color="";'
-  + '      p.querySelectorAll(".num,.alias,.peer").forEach(function(el){ el.style.color=""; });'
-  + '    }'
-  + '  });'
-  + '  Array.prototype.forEach.call(document.querySelectorAll("[draggable]"),function(el){el.removeAttribute("draggable");});'
-  + '})();<\/script>'
-  + '</body></html>';
-
-  var win = window.open('', '_blank');
-  if (!win) {alert('Allow popups to open the print layout.'); return;}
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  
-  win.onload = function() {
-  win.focus();
-  setTimeout(function() {
-    win.print();
-    win.close();
-  }, 30); 
-};
+  var html=buildPrintHTML(includeTable);
+  var win=window.open('', '_blank');
+  if(!win){alert('Allow popups to open the print layout.');return;}
+  win.onload=function(){win.focus();win.print();};
+  win.document.open();win.document.write(html);win.document.close();
 }
 
 /* ===================== DRAW.IO EXPORT ===================== */

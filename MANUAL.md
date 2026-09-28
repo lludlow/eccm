@@ -142,7 +142,12 @@ From the *Connections* table:
 ---
 
 ## 🖨️ Printing
-- Use **Print layout** (top-right) to generate a printable sheet of devices + connections  
+- Use **Print layout** (top-right) to generate an A4 landscape report.
+  Compact port maps use **# connection references**; the Connections table
+  contains full endpoint names, aliases, bonds and cable details. Port settings
+  with identical values are grouped in a separate configuration table.
+  All profile connections are included, regardless of the on-screen search.
+  The print preview stays open so you can print again or save it as PDF.
 
 ---
 
@@ -217,7 +222,8 @@ and its cable details.
 Search accepts cable details, VLAN summaries and bond names. **Cable labels** in
 the header opens a printable sheet with two labels per named cable, one for each
 end, across the current profile. Each label includes its local and remote port.
-The print layout also includes a port configuration list and cable schedule.
+The print layout includes grouped port configuration and a connection table
+with cable details.
 
 ## Device templates
 
