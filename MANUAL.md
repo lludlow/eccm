@@ -62,7 +62,8 @@ Create the device with its populated **LC duplex connection count**, then select
   Choose a cassette color in **Layout** to distinguish A/B fabrics or racks.
   The color marks its border and heading and follows the cassette when moved.
   **Default** clears the custom color. Colors are retained in templates, JSON
-  exports and printed layouts; port colors continue to show connection status.
+  exports and printed layouts. Connected ports on the peer device use this
+  cassette color, falling back to the enclosure color when no custom color is set.
   Unused slots display blank panels. Moving a cassette preserves its connections.
 - Names such as **C2-LC01 / Front** identify the cassette, duplex connection and
   side in the connection table, prompts, cable labels and exports.

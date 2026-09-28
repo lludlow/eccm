@@ -928,6 +928,10 @@ function cassetteColor(layout, c) {
   var color=(layout.colors || {})[c];
   return typeof color==='string' && /^#[0-9a-f]{6}$/i.test(color) ? color : '';
 }
+function endpointColor(ep) {
+  var d=deviceById(ep.deviceId), layout=d && cassetteLayoutFor(d);
+  return (layout && cassetteColor(layout,Math.floor((ep.port-1)/12)+1)) || (d && d.color) || '#22354a';
+}
 function cassetteRowPorts(c, top) {
   var start=(c-1)*12+(top?7:1);
   return Array.from({length:6},function(_,i){return start+i;});
@@ -1903,7 +1907,7 @@ var peerEl = el(
   if (reserved){
     paintPortBase(node, 'var(--reserved-bg)');
   } else if (linked && peerDev){
-    paintPortBase(node, peerDev.color || '#22354a');
+    paintPortBase(node, endpointColor(peer));
   } else {
     paintPortBase(node, '#0f141d');
   }
