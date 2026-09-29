@@ -2183,7 +2183,7 @@ function renderConnections() {
       ),
       connectionPortCell(L.a,aPortLabel),
       el('td', {}, aAlias),
-      el('td', {class:'connection-details', title:linkDetails(L)},
+      el('td', {class:'connection-details'},
         el('button', {class:'mini', onclick:function(){openCableEditor(L);}}, (L.cable && L.cable.id) || 'Cable details'),
         el('div', {class:'small'}, vlanSummary(L.a) + ' ⇄ ' + vlanSummary(L.b))),
       el(
@@ -2222,26 +2222,31 @@ function renderConnections() {
       if (portB) outlineForSelection(portB);
     });
 
-    tr.addEventListener('mouseenter', function (e) {
-      if (!tr.classList.contains('highlight')) return;
-
+    function showConnectionHover(e) {
+      // Cable details use the same card as the selected row, never a native title.
+      if ((!tr.classList.contains('highlight') && !e.target.closest('.connection-details')) ||
+          e.target.closest('[title]')) {
+        hcHide();
+        return;
+      }
       var html =
         '<div class="hc-title">Connection</div>' +
         '<div class="hc-row"><div class="hc-k">A</div><div>' +
-          aName + ' • ' + aPortLabel + (aAlias ? ' • ' + aAlias : '') +
+          escapeXml(aName + ' • ' + aPortLabel + (aAlias ? ' • ' + aAlias : '')) +
+          '<br>' + escapeXml([vlanSummary(L.a), bondSummary(L.a)].filter(Boolean).join(' • ')) +
         '</div></div>' +
         '<div class="hc-row"><div class="hc-k">B</div><div>' +
-          bName + ' • ' + bPortLabel + (bAlias ? ' • ' + bAlias : '') +
+          escapeXml(bName + ' • ' + bPortLabel + (bAlias ? ' • ' + bAlias : '')) +
+          '<br>' + escapeXml([vlanSummary(L.b), bondSummary(L.b)].filter(Boolean).join(' • ')) +
+        '</div></div>' +
+        '<div class="hc-row"><div class="hc-k">Cable</div><div>' +
+          escapeXml(cableSummary(L) || 'No cable details recorded') +
         '</div></div>';
-
       hcShowForTarget(tr, html, e);
-    });
+    }
 
-    tr.addEventListener('mousemove', function (e) {
-      if (!tr.hasAttribute('data-link-id')) return;
-      if (!tr.classList.contains('highlight')) return;
-      hcShowForTarget(tr, __hoverEl && __hoverEl.innerHTML || '', e);
-    });
+    tr.addEventListener('mouseenter', showConnectionHover);
+    tr.addEventListener('mousemove', showConnectionHover);
 
     tr.addEventListener('mouseleave', hcHide);
 
